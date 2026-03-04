@@ -1,0 +1,22 @@
+{
+  "name": "figma-export-compress-plugin",
+  "version": "3.0.0",
+  "description": "Figma plugin for exporting images with size, format, and compression options.",
+  "main": "code.js",
+  "scripts": {
+    "build": "tsc"
+  },
+  "keywords": [
+    "figma",
+    "plugin",
+    "export",
+    "compress",
+    "image"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@figma/plugin-typings": "^1.77.0",
+    "typescript": "^4.9.5"
+  }
+}

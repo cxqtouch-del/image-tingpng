@@ -1,0 +1,18 @@
+{
+  "name": "图片导出与压缩",
+  "id": "123456789",
+  "api": "1.0.0",
+  "main": "code.js",
+  "ui": "ui.html",
+  "editorType": ["figma"],
+  "networkAccess": {
+    "allowedDomains": [
+      "https://cdnjs.cloudflare.com",
+      "https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js",
+      "https://api.tinify.com",
+      "https://tinypng-proxy.cxqtouch.workers.dev",
+      "*"
+    ],
+    "reasoning": "This plugin requires access to TinyPNG API and its dynamically generated download URLs to compress exported images."
+  }
+}

@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        :root {
+            --blue: #2555ff;
+            --light-grey: #fff;
+            --border-grey: #e0e0e0;
+            --text-primary: #222222;
+            --text-secondary: #888888;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--light-grey);
+            padding: 0;
+            margin: 0;
+            width: 300px;
+            height: 600px;
+            overflow: hidden;
+            box-sizing: border-box;
+            border-top: 4px solid var(--blue);
+        }
+        .container {
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 24px; /* Increased gap between sections */
+        }
+        .section {
+            background-color: transparent;
+            border: none;
+            padding: 0;
+        }
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            font-weight: 500; /* Semibold */
+            font-size: 13px;
+            color: var(--text-primary);
+        }
+
+        .section > label {
+            font-weight: 500;
+            font-size: 13px;
+            color: var(--text-primary);
+            margin-bottom: 12px;
+            display: block;
+        }
+        .action-link {
+            color: var(--blue);
+            text-decoration: none;
+            font-weight: 400;
+            font-size: 13px;
+        }
+        .action-link#clearAllLayers {
+            color: #ff4d4f; /* Red for clear */
+        }
+
+        #selectAllLayers {
+            color: var(--blue);
+        }
+        .layer-list {
+            max-height: 400px;
+            overflow-y: auto;
+            margin: 0 -4px; /* Counteract item padding */
+            padding: 0 4px;
+        }
+        .layer-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px;
+            background-color: #F8F8F8;
+            border-radius: 8px;
+            margin-bottom: 8px;
+        }
+
+        .layer-item .thumbnail {
+            width: 48px;
+            height: 48px;
+            border-radius: 8px;
+            background-color: #f0f0f0; /* Placeholder color */
+            object-fit: contain; /* Change to contain to show the whole image */
+            object-position: 50% 50%;
+        }
+
+        .layer-item .layer-info {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            flex-grow: 1;
+        }
+
+        .layer-item .layer-name {
+            font-weight: 400;
+            font-size: 13px;
+            color: #222;
+        }
+
+        .layer-item .layer-dims {
+            font-size: 12px;
+            color: #888;
+        }
+
+        .checkbox-row {
+            display: block; /* Change to block for positioning context */
+            position: relative; /* Set as positioning context */
+            padding-left: 24px; /* Make space for the absolute checkbox */
+            line-height: 16px; /* Ensure text has a consistent line height */
+            font-weight: 400;
+            font-size: 13px;
+            color: var(--text-primary);
+            margin-bottom: 10px; /* Add some space between rows */
+        }
+
+        .checkbox-row input[type="checkbox"] {
+            position: absolute;
+            left: 0;
+            top: 30%;
+            transform: translateY(-50%); /* The definitive centering method */
+            gap: 8px;
+        }
+
+
+
+        /* Custom Checkbox Styles */
+        input[type="checkbox"] {
+            appearance: none;
+            -webkit-appearance: none;
+            background-color: #fff;
+            border: 1px solid var(--border-grey);
+            border-radius: 4px;
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+            position: relative;
+        }
+
+        input[type="checkbox"]:checked {
+            background-color: var(--blue);
+            border-color: var(--blue);
+        }
+
+        input[type="checkbox"]:checked::after {
+            content: '';
+            position: absolute;
+            top: 2px;
+            left: 5px;
+            width: 3px;
+            height: 7px;
+            border: solid white;
+            border-width: 0 2px 2px 0;
+            transform: rotate(45deg);
+        }
+        .control-group {
+            display: flex;
+            flex-direction: row; /* Change to row for horizontal layout */
+            gap: 12px; /* Set gap to 12px */
+            align-items: center;
+        }
+
+        .row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        /* Button group styling for scales and formats */
+        .button-group {
+            display: flex;
+            background-color: #F2F3F5;
+            border-radius: 8px;
+            padding: 4px;
+        }
+        .button-group button {
+            flex-grow: 1;
+            padding: 8px 12px;
+            border: none;
+            background-color: transparent;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            color: var(--text-secondary);
+            transition: background-color 0.2s, color 0.2s;
+        }
+        .button-group button.active {
+            background-color: #ffffff;
+            color: var(--text-primary);
+        }
+
+        button {
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            background-color: var(--blue);
+            color: white;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: background-color 0.2s;
+            width: 100%;
+        }
+       
+        }
+        button:disabled {
+            background-color: #C9CDD4;
+            cursor: not-allowed;
+        }
+
+        #exportButton {
+            margin-top: -10px;
+        }
+        .message {
+            margin-top: 10px;
+            color: green;
+            min-height: 20px;
+        }
+        .error-message {
+            color: red;
+        }
+        .info-message {
+            color: blue;
+        }
+        .hidden {
+            display: none;
+        }
+        .action-link {
+            color: #18A0FB;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        .action-link:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+    <div class="section">
+        <div class="section-header">
+            <span>选中图层 (<span id="selectedLayerCount">0</span>)</span>
+            <div>
+                <a href="#" class="action-link" id="selectAllLayers">全选</a>
+                <span style="margin: 0 5px;">|</span>
+                <a href="#" class="action-link" id="clearAllLayers">清空</a>
+            </div>
+        </div>
+        <div id="selectedLayersContainer" class="layer-list">
+            <!-- Selected layers will be dynamically inserted here -->
+            <p id="noSelectionMessage">请在Figma中选择图层</p>
+        </div>
+    </div>
+
+    <div class="section">
+        <label>导出尺寸</label>
+        <div class="control-group" id="scaleOptions">
+            <label class="checkbox-row">
+                <input type="checkbox" data-scale="1" checked> <span></span>1x</span>
+            </label>
+            <label class="checkbox-row">
+                <input type="checkbox" data-scale="2"> <span>2x</span>
+            </label>
+            <label class="checkbox-row">
+                <input type="checkbox" data-scale="3"> <span>3x</span>
+            </label>
+            <label class="checkbox-row">
+                <input type="checkbox" data-scale="4"> <span>4x</span>
+            </label>
+        </div>
+    </div>
+
+    <div class="section">
+        <label>导出格式</label>
+        <div class="button-group" id="formatOptions">
+            <button data-format="PNG" class="active">PNG</button>
+            <button data-format="JPG">JPG</button>
+            <button data-format="SVG">SVG</button>
+        </div>
+    </div>
+
+    <div class="section" id="compressionSection">
+        <label class="checkbox-row">
+            <input type="checkbox" id="compressImageCheckbox"> <span></span>极限压缩</span>
+        </label>
+    </div>
+
+    <button id="exportButton">导出 0 个图层</button>
+</div>
+
+    <p class="message" id="message"></p>
+
+    <script>
+        // --- DOM Elements ---
+        const selectedLayerCountSpan = document.getElementById('selectedLayerCount');
+        const selectAllLayersLink = document.getElementById('selectAllLayers');
+        const clearAllLayersLink = document.getElementById('clearAllLayers');
+        const selectedLayersContainer = document.getElementById('selectedLayersContainer');
+        const noSelectionMessage = document.getElementById('noSelectionMessage');
+
+        const scaleOptionsDiv = document.getElementById('scaleOptions');
+        const formatOptionsDiv = document.getElementById('formatOptions');
+        const compressImageCheckbox = document.getElementById('compressImageCheckbox');
+        const compressionSection = document.getElementById('compressionSection');
+        const exportButton = document.getElementById('exportButton');
+        const messageElement = document.getElementById('message');
+
+        // --- State Variables ---
+        let selectedScales = [1]; // Default to 1x
+        let selectedFormat = 'PNG'; // Default to PNG
+        let isCompressing = false;
+        let selectedNodeIds = new Set(); // Stores IDs of nodes checked in the UI
+
+        // --- Helper Functions ---
+        function showMessage(msg, type = 'info') {
+            messageElement.textContent = msg;
+            messageElement.className = `message ${type}-message`;
+            if (type !== 'error') {
+                setTimeout(() => {
+                    messageElement.textContent = '';
+                    messageElement.className = 'message';
+                }, 3000);
+            }
+        }
+
+        function toggleExportButton(enable) {
+            exportButton.disabled = !enable;
+        }
+
+        function updateCompressionSectionVisibility() {
+            if (selectedFormat === 'JPG' || selectedFormat === 'PNG') {
+                compressionSection.style.display = 'block';
+            } else {
+                compressionSection.style.display = 'none';
+                compressImageCheckbox.checked = false; // Uncheck if format changes
+                isCompressing = false;
+            }
+        }
+
+        function updateExportButtonText() {
+            const count = selectedNodeIds.size;
+            exportButton.textContent = `导出 ${count} 个图层`;
+            exportButton.disabled = count === 0 || selectedScales.length === 0;
+        }
+
+        // --- Event Listeners ---
+
+        // Scale options (multi-select)
+        scaleOptionsDiv.addEventListener('change', (event) => {
+            const checkbox = event.target;
+            if (checkbox.type === 'checkbox' && checkbox.dataset.scale) {
+                const scale = parseFloat(checkbox.dataset.scale);
+                if (checkbox.checked) {
+                    if (!selectedScales.includes(scale)) {
+                        selectedScales.push(scale);
+                    }
+                } else {
+                    selectedScales = selectedScales.filter(s => s !== scale);
+                }
+
+                if (selectedScales.length === 0) {
+                    showMessage('请至少选择一个导出尺寸！', 'error');
+                } else {
+                    showMessage('');
+                }
+                updateExportButtonText();
+            }
+        });
+
+        // Format options (single select)
+        formatOptionsDiv.addEventListener('click', (event) => {
+            const button = event.target.closest('button');
+            if (button && button.dataset.format !== selectedFormat) {
+                // Deactivate current active button
+                const currentActive = formatOptionsDiv.querySelector(`button[data-format="${selectedFormat}"]`);
+                if (currentActive) {
+                    currentActive.classList.remove('active');
+                }
+                // Activate new button
+                selectedFormat = button.dataset.format;
+                button.classList.add('active');
+                updateCompressionSectionVisibility();
+                updateExportButtonText();
+            }
+        });
+
+        // Compression checkbox
+        compressImageCheckbox.addEventListener('change', (event) => {
+            isCompressing = event.target.checked;
+        });
+
+        // Export button click
+        exportButton.onclick = () => {
+            showMessage('');
+            toggleExportButton(false);
+
+            if (selectedNodeIds.size === 0) {
+                showMessage('请选择要导出的图层！', 'error');
+                toggleExportButton(true);
+                return;
+            }
+            if (selectedScales.length === 0) {
+                showMessage('请至少选择一个导出尺寸！', 'error');
+                toggleExportButton(true);
+                return;
+            }
+
+            showMessage('正在导出图片...', 'info');
+            parent.postMessage({
+                pluginMessage: {
+                    type: 'export-image',
+                    settings: {
+                        nodeIds: Array.from(selectedNodeIds),
+                        scales: selectedScales,
+                        format: selectedFormat,
+                        compress: isCompressing
+                    }
+                }
+            }, '*');
+        };
+
+        // Select All Layers
+        selectAllLayersLink.addEventListener('click', (event) => {
+            event.preventDefault();
+            selectedLayersContainer.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
+                if (!checkbox.checked) {
+                    checkbox.checked = true;
+                    selectedNodeIds.add(checkbox.dataset.nodeId);
+                }
+            });
+            selectedLayerCountSpan.textContent = selectedNodeIds.size;
+            updateExportButtonText();
+        });
+
+        // Clear All Layers
+        clearAllLayersLink.addEventListener('click', (event) => {
+            event.preventDefault();
+            selectedLayersContainer.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
+                checkbox.checked = false;
+            });
+            selectedNodeIds.clear();
+            selectedLayerCountSpan.textContent = 0;
+            updateExportButtonText();
+        });
+
+        // --- Message from Plugin Code ---
+        onmessage = (event) => {
+            const pluginMessage = event.data.pluginMessage;
+            if (pluginMessage.type === 'selection-change') {
+                const { nodes } = pluginMessage;
+                selectedLayersContainer.innerHTML = ''; // Clear previous layers
+                selectedNodeIds.clear(); // Clear previously selected IDs
+
+                if (nodes.length === 0) {
+                    selectedLayersContainer.appendChild(noSelectionMessage);
+                    noSelectionMessage.style.display = 'block';
+                } else {
+                    noSelectionMessage.style.display = 'none';
+                    nodes.slice(0, 10).forEach(node => { // Limit to 10 nodes
+                        let thumbnailUrl = '';
+                        if (node.thumbnail) {
+                            const blob = new Blob([node.thumbnail], { type: 'image/png' });
+                            thumbnailUrl = URL.createObjectURL(blob);
+                        }
+
+                        const layerItem = document.createElement('div');
+                        layerItem.className = 'layer-item';
+                        layerItem.innerHTML = `
+                            <input type="checkbox" data-node-id="${node.id}" checked>
+                            <img src="${thumbnailUrl}" class="thumbnail">
+                            <div class="layer-info">
+                                <div class="layer-name">${node.name}</div>
+                                <div class="layer-dims">${node.width} × ${node.height}</div>
+                            </div>
+                        `;
+                        const checkbox = layerItem.querySelector('input[type="checkbox"]');
+                        checkbox.addEventListener('change', (e) => {
+                            if (e.target.checked) {
+                                selectedNodeIds.add(node.id);
+                            } else {
+                                selectedNodeIds.delete(node.id);
+                            }
+                            selectedLayerCountSpan.textContent = selectedNodeIds.size;
+                            updateExportButtonText();
+                        });
+                        selectedLayersContainer.appendChild(layerItem);
+                        selectedNodeIds.add(node.id); // Add by default when displayed
+                    });
+                }
+                selectedLayerCountSpan.textContent = selectedNodeIds.size;
+                updateExportButtonText();
+                toggleExportButton(true);
+            } else if (pluginMessage.type === 'export-complete-data') {
+                const { filename, bytes } = pluginMessage;
+                const blob = new Blob([new Uint8Array(bytes)], { type: `image/${filename.split('.').pop()}` });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                URL.revokeObjectURL(url);
+                showMessage('导出成功！', 'success');
+                toggleExportButton(true);
+            } else if (pluginMessage.type === 'error') {
+                showMessage(pluginMessage.message, 'error');
+                toggleExportButton(true);
+            }
+        };
+
+        // Initial update
+        updateCompressionSectionVisibility();
+        updateExportButtonText();
+
+
+    </script>
+</body>
+</html>
