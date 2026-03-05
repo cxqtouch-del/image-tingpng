@@ -1,4 +1,4 @@
-figma.showUI(__html__, { width: 300, height: 390 });
+figma.showUI(__html__, { width: 300, height: 400 });
 
 // Function to send selected nodes to the UI
 async function postSelectedNodesToUI() {
@@ -129,7 +129,7 @@ figma.ui.onmessage = async (msg) => {
 
     figma.ui.postMessage({ type: 'export-all-complete', total: exportCount });
   } else if (msg.type === 'resize') {
-    const minH = 390;
+    const minH = 400;
     const maxH = 800;
     const h = Math.max(minH, Math.min(maxH, Number(msg.height) || minH));
     figma.ui.resize(300, h);

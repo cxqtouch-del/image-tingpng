@@ -8,7 +8,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-figma.showUI(__html__, { width: 300, height: 390 });
+figma.showUI(__html__, { width: 300, height: 400 });
 // Function to send selected nodes to the UI
 function postSelectedNodesToUI() {
     return __awaiter(this, void 0, void 0, function* () {
@@ -126,7 +126,7 @@ figma.ui.onmessage = (msg) => __awaiter(void 0, void 0, void 0, function* () {
         figma.ui.postMessage({ type: 'export-all-complete', total: exportCount });
     }
     else if (msg.type === 'resize') {
-        const minH = 390;
+        const minH = 400;
         const maxH = 800;
         const h = Math.max(minH, Math.min(maxH, Number(msg.height) || minH));
         figma.ui.resize(300, h);

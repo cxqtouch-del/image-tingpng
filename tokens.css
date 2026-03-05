@@ -1,0 +1,19 @@
+:root {
+    /* Color Palette */
+    --blue: #2E3BF8;
+    --light-grey: #fff;
+    --background-grey: #F8F8F8;
+    --border-grey: #e0e0e0;
+    --button-disabled-grey: #C9CDD4;
+    --button-bg-grey: #F2F3F5;
+    
+    /* Text Colors */
+    --text-primary: #222222;
+    --text-secondary: #888888;
+    --text-danger: #ff4d4f;
+    --text-white: #ffffff;
+    
+    /* Overlay */
+    --overlay-bg: rgba(0, 0, 0, 0.6);
+    --toast-bg: rgba(0, 0, 0, 0.8);
+}
