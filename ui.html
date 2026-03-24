@@ -432,6 +432,22 @@ text-align: center;            padding: 16px 0 10px;
             border: 1px solid var(--blue);
             outline: none;
         }
+        .modal-input::selection {
+            background: #B4CEFF;
+        }
+        .modal-input.input-error {
+            border-color: var(--text-danger) !important;
+        }
+        .modal-input-error {
+            margin-top: 6px;
+            font-size: 12px;
+            color: var(--text-danger);
+            line-height: 1.4;
+            display: none;
+        }
+        .modal-input-error.show {
+            display: block;
+        }
         .toggle-icon {
             position: absolute;
             right: 8px;
@@ -604,6 +620,7 @@ text-align: center;            padding: 16px 0 10px;
                     <!-- Icon will be set by JS -->
                 </div>
             </div>
+            <div id="modalKeyError" class="modal-input-error"></div>
         </div>
         <div class="modal-footer">
             <button id="modalCancelBtn" class="btn btn-outline text-gray-700 font-normal min-h-[36px] h-[36px] px-4 rounded-lg text-xs hover:text-gray-800 hover:bg-[#f5f5f5]">取消</button>
@@ -667,6 +684,7 @@ text-align: center;            padding: 16px 0 10px;
         // Modal Elements
         const apiKeyModal = document.getElementById('apiKeyModal');
         const modalKeyInput = document.getElementById('modalKeyInput');
+        const modalKeyError = document.getElementById('modalKeyError');
         const modalSaveBtn = document.getElementById('modalSaveBtn');
         const modalCancelBtn = document.getElementById('modalCancelBtn');
         const toggleKeyVisibility = document.getElementById('toggleKeyVisibility');
@@ -702,6 +720,10 @@ text-align: center;            padding: 16px 0 10px;
                 compressFailed: '压缩失败', unknownError: '未知错误',
                 tinypngNoReduce: '提示：TinyPNG 未能进一步压缩此图片', orig: '原', new: '新',
                 enterValidKey: '请输入有效的 API Key',
+                invalidKeyFormat: 'Key 格式不正确，请检查后重试',
+                keyVerifyFailed: 'Key 校验失败，请稍后重试',
+                keyInvalid: 'API Key 无效，请确认后重试',
+                keyVerifyNetworkError: '网络异常，暂时无法校验 Key',
                 browserBlockHint: '提示：浏览器可能拦截多文件下载。若仅下载了一个文件，请在浏览器站点设置中允许"自动下载多个文件"，或使用"打包下载"。'
             },
             en: {
@@ -722,6 +744,10 @@ text-align: center;            padding: 16px 0 10px;
                 compressFailed: 'Compression failed', unknownError: 'Unknown error',
                 tinypngNoReduce: 'TinyPNG could not reduce this image', orig: 'orig', new: 'new',
                 enterValidKey: 'Please enter a valid API Key',
+                invalidKeyFormat: 'Invalid key format. Please check and try again.',
+                keyVerifyFailed: 'Key verification failed. Please try again.',
+                keyInvalid: 'Invalid API Key. Please verify and try again.',
+                keyVerifyNetworkError: 'Network error. Unable to verify key right now.',
                 browserBlockHint: 'Tip: Browser may block multiple downloads. If only one file downloaded, allow "Automatically download multiple files" in site settings, or use "Package download".'
             }
         };
@@ -1019,6 +1045,19 @@ text-align: center;            padding: 16px 0 10px;
                 );
                 parent.postMessage({ pluginMessage: { type: 'resize', height: desired } }, '*');
             });
+        }
+        let containerResizeObserver = null;
+        function setupAutoResizeObserver() {
+            if (typeof ResizeObserver === 'undefined') return;
+            const containerEl = document.querySelector('.container');
+            if (!containerEl) return;
+            if (containerResizeObserver) {
+                containerResizeObserver.disconnect();
+            }
+            containerResizeObserver = new ResizeObserver(() => {
+                requestResize();
+            });
+            containerResizeObserver.observe(containerEl);
         }
 
         function toggleExportButton(enable) {
@@ -1480,10 +1519,82 @@ text-align: center;            padding: 16px 0 10px;
         });
 
         let savedCompressionCount = null;
+        let isSavingKey = false;
         function updateCompressionCountDisplay() {
             if (compressionCountNum) {
                 compressionCountNum.textContent = savedCompressionCount != null ? String(savedCompressionCount) : '--';
             }
+        }
+        function setModalKeyError(message) {
+            if (!modalKeyInput || !modalKeyError) return;
+            if (message) {
+                modalKeyInput.classList.add('input-error');
+                modalKeyError.textContent = message;
+                modalKeyError.classList.add('show');
+            } else {
+                modalKeyInput.classList.remove('input-error');
+                modalKeyError.textContent = '';
+                modalKeyError.classList.remove('show');
+            }
+        }
+        function isLikelyValidApiKeyFormat(key) {
+            // 基础格式校验：非空、无空白、可打印 ASCII
+            return !!key && key.length >= 8 && !/\s/.test(key) && /^[\x21-\x7E]+$/.test(key);
+        }
+        async function verifyApiKeyBeforeSave(rawKey) {
+            const key = rawKey.replace(/^api:/, '');
+            const auth = 'Basic ' + btoa('api:' + key);
+            const CF_WORKER_URL = 'https://tinypng-proxy.cxqtouch.workers.dev/';
+            const API_URL = 'https://api.tinify.com/shrink';
+            const probes = [
+                { label: 'Cloudflare Worker', proxyUrl: CF_WORKER_URL.includes('?') ? CF_WORKER_URL : CF_WORKER_URL + '?url=' },
+                { label: 'corsproxy.io', proxyUrl: 'https://corsproxy.io/?' }
+            ];
+
+            // 使用无效图片体做鉴权探测：不会产生成功压缩计数
+            const probeBody = new Uint8Array([0]);
+            const fetchWithTimeout = async (url, options, timeoutMs = 12000) => {
+                const controller = new AbortController();
+                const timer = setTimeout(() => controller.abort(), timeoutMs);
+                try {
+                    return await fetch(url, { ...options, signal: controller.signal });
+                } finally {
+                    clearTimeout(timer);
+                }
+            };
+
+            let lastNetworkError = null;
+            for (const probe of probes) {
+                try {
+                    const resp = await fetchWithTimeout(
+                        probe.proxyUrl + encodeURIComponent(API_URL),
+                        {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': auth,
+                                'Content-Type': 'application/octet-stream'
+                            },
+                            body: probeBody
+                        }
+                    );
+
+                    if (resp.status === 401 || resp.status === 403) {
+                        return { ok: false, reason: 'invalid' };
+                    }
+                    if (resp.status === 429) {
+                        return { ok: true, reason: 'limit' };
+                    }
+                    // 400/415 等通常表示鉴权通过但图片体无效，视为 key 可用
+                    if (resp.ok || resp.status === 400 || resp.status === 415 || resp.status === 422) {
+                        return { ok: true, reason: 'valid' };
+                    }
+
+                    lastNetworkError = new Error(`Unexpected status: ${resp.status}`);
+                } catch (e) {
+                    lastNetworkError = e;
+                }
+            }
+            return { ok: false, reason: 'network', error: lastNetworkError };
         }
         function openManageKeyModal() {
             modalKeyInput.value = storedApiKey || '';
@@ -1491,6 +1602,7 @@ text-align: center;            padding: 16px 0 10px;
             updateCompressionCountDisplay();
             modalKeyInput.type = 'password';
             toggleKeyVisibility.innerHTML = ICON_HIDE;
+            setModalKeyError('');
             apiKeyModal.style.display = 'flex';
         }
 
@@ -1558,10 +1670,40 @@ text-align: center;            padding: 16px 0 10px;
                 toggleKeyVisibility.innerHTML = ICON_HIDE;
             }
         });
+        modalKeyInput.addEventListener('input', () => {
+            setModalKeyError('');
+        });
 
-        modalSaveBtn.addEventListener('click', () => {
+        modalSaveBtn.addEventListener('click', async () => {
+            if (isSavingKey) return;
             const key = modalKeyInput.value.trim();
-            if (key) {
+            setModalKeyError('');
+            if (!key) {
+                setModalKeyError(t('enterValidKey'));
+                return;
+            }
+            if (!isLikelyValidApiKeyFormat(key)) {
+                setModalKeyError(t('invalidKeyFormat'));
+                return;
+            }
+
+            const originalBtnText = modalSaveBtn.textContent;
+            isSavingKey = true;
+            modalSaveBtn.disabled = true;
+            modalSaveBtn.textContent = '...';
+            try {
+                const check = await verifyApiKeyBeforeSave(key);
+                if (!check.ok) {
+                    if (check.reason === 'invalid') {
+                        setModalKeyError(t('keyInvalid'));
+                    } else if (check.reason === 'network') {
+                        setModalKeyError(t('keyVerifyNetworkError'));
+                    } else {
+                        setModalKeyError(t('keyVerifyFailed'));
+                    }
+                    return;
+                }
+
                 storedApiKey = key;
                 currentKeyText.textContent = key; // Update display
                 parent.postMessage({ pluginMessage: { type: 'save-api-key', apiKey: key } }, '*');
@@ -1573,8 +1715,10 @@ text-align: center;            padding: 16px 0 10px;
                     cloudCompressCheckbox.checked = true;
                     isCloudCompress = true;
                 }
-            } else {
-                alert(t('enterValidKey'));
+            } finally {
+                isSavingKey = false;
+                modalSaveBtn.disabled = false;
+                modalSaveBtn.textContent = originalBtnText;
             }
         });
 
@@ -1881,6 +2025,7 @@ text-align: center;            padding: 16px 0 10px;
         updateExportButtonText();
         updateZipEnforcement();
         updateSelectAllState();
+        setupAutoResizeObserver();
         requestResize();
 
         // Notify plugin that UI is ready
