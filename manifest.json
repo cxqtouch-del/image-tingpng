@@ -10,6 +10,7 @@
       "https://cdnjs.cloudflare.com",
       "https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js",
       "https://api.tinify.com",
+        "https://corsproxy.io",
       "https://tinypng-proxy.cxqtouch.workers.dev",
       "*"
     ],

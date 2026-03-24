@@ -2,9 +2,11 @@ figma.showUI(__html__, { width: 300, height: 400 });
 
 // Function to send selected nodes to the UI
 async function postSelectedNodesToUI() {
-  const selectedNodes = figma.currentPage.selection
+  const MAX_NODES_FOR_UI = 5;
+
+  const allSelectedNodes = figma.currentPage.selection
     .filter(node => node.type === "FRAME" || node.type === "GROUP" || node.type === "COMPONENT" || node.type === "INSTANCE" || node.type === "RECTANGLE" || node.type === "ELLIPSE" || node.type === "POLYGON" || node.type === "STAR" || node.type === "VECTOR" || node.type === "TEXT" || node.type === "SLICE" || node.type === "SECTION")
-    .slice(0, 10); // Limit to first 10 selected nodes
+  const selectedNodes = allSelectedNodes.slice(0, MAX_NODES_FOR_UI); // Limit to first 5 selected nodes
 
   const nodesForUI = await Promise.all(selectedNodes.map(async (node) => {
     let thumbnailBytes = null;
@@ -26,7 +28,11 @@ async function postSelectedNodesToUI() {
     };
   }));
 
-  figma.ui.postMessage({ type: 'selection-change', nodes: nodesForUI });
+  figma.ui.postMessage({
+    type: 'selection-change',
+    nodes: nodesForUI,
+    totalSelectedCount: allSelectedNodes.length
+  });
 }
 
 // Initial post of selected nodes when plugin starts
@@ -43,15 +49,23 @@ figma.ui.onmessage = async (msg) => {
     try {
       const apiKey = await figma.clientStorage.getAsync('tinify-api-key');
       const hasShownInfoModal = await figma.clientStorage.getAsync('has-shown-info-modal');
+      const compressionCount = await figma.clientStorage.getAsync('tinify-compression-count');
       
       // Always send response, even if key is null/undefined
       figma.ui.postMessage({ 
         type: 'load-settings', 
         apiKey: apiKey || '',
-        hasShownInfoModal: !!hasShownInfoModal 
+        hasShownInfoModal: !!hasShownInfoModal,
+        compressionCount: typeof compressionCount === 'number' ? compressionCount : null
       });
     } catch (e) {
       console.error('Failed to load settings:', e);
+    }
+  } else if (msg.type === 'save-compression-count') {
+    const count = msg.count;
+    if (typeof count === 'number' && count >= 0) {
+      await figma.clientStorage.setAsync('tinify-compression-count', count);
+      figma.ui.postMessage({ type: 'compression-count-updated', count });
     }
   } else if (msg.type === 'save-api-key') {
     await figma.clientStorage.setAsync('tinify-api-key', msg.apiKey);

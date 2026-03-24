@@ -12,9 +12,10 @@ figma.showUI(__html__, { width: 300, height: 400 });
 // Function to send selected nodes to the UI
 function postSelectedNodesToUI() {
     return __awaiter(this, void 0, void 0, function* () {
-        const selectedNodes = figma.currentPage.selection
-            .filter(node => node.type === "FRAME" || node.type === "GROUP" || node.type === "COMPONENT" || node.type === "INSTANCE" || node.type === "RECTANGLE" || node.type === "ELLIPSE" || node.type === "POLYGON" || node.type === "STAR" || node.type === "VECTOR" || node.type === "TEXT" || node.type === "SLICE" || node.type === "SECTION")
-            .slice(0, 10); // Limit to first 10 selected nodes
+        const MAX_NODES_FOR_UI = 5;
+        const allSelectedNodes = figma.currentPage.selection
+            .filter(node => node.type === "FRAME" || node.type === "GROUP" || node.type === "COMPONENT" || node.type === "INSTANCE" || node.type === "RECTANGLE" || node.type === "ELLIPSE" || node.type === "POLYGON" || node.type === "STAR" || node.type === "VECTOR" || node.type === "TEXT" || node.type === "SLICE" || node.type === "SECTION");
+        const selectedNodes = allSelectedNodes.slice(0, MAX_NODES_FOR_UI); // Limit to first 5 selected nodes
         const nodesForUI = yield Promise.all(selectedNodes.map((node) => __awaiter(this, void 0, void 0, function* () {
             let thumbnailBytes = null;
             try {
@@ -34,7 +35,11 @@ function postSelectedNodesToUI() {
                 thumbnail: thumbnailBytes // This can be null if export fails
             };
         })));
-        figma.ui.postMessage({ type: 'selection-change', nodes: nodesForUI });
+        figma.ui.postMessage({
+            type: 'selection-change',
+            nodes: nodesForUI,
+            totalSelectedCount: allSelectedNodes.length
+        });
     });
 }
 // Initial post of selected nodes when plugin starts
@@ -49,15 +54,24 @@ figma.ui.onmessage = (msg) => __awaiter(void 0, void 0, void 0, function* () {
         try {
             const apiKey = yield figma.clientStorage.getAsync('tinify-api-key');
             const hasShownInfoModal = yield figma.clientStorage.getAsync('has-shown-info-modal');
+            const compressionCount = yield figma.clientStorage.getAsync('tinify-compression-count');
             // Always send response, even if key is null/undefined
             figma.ui.postMessage({
                 type: 'load-settings',
                 apiKey: apiKey || '',
-                hasShownInfoModal: !!hasShownInfoModal
+                hasShownInfoModal: !!hasShownInfoModal,
+                compressionCount: typeof compressionCount === 'number' ? compressionCount : null
             });
         }
         catch (e) {
             console.error('Failed to load settings:', e);
+        }
+    }
+    else if (msg.type === 'save-compression-count') {
+        const count = msg.count;
+        if (typeof count === 'number' && count >= 0) {
+            yield figma.clientStorage.setAsync('tinify-compression-count', count);
+            figma.ui.postMessage({ type: 'compression-count-updated', count });
         }
     }
     else if (msg.type === 'save-api-key') {

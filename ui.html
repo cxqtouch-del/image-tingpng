@@ -283,6 +283,25 @@ text-align: center;            padding: 16px 0 10px;
         .info-message {
             color: blue;
         }
+        .scale-error-container {
+            margin-top: 2px;
+            min-height: 4px; /* 保证显示/隐藏不改变整体高度 */
+        }
+        .scale-error-text {
+            font-size: 13px;
+            color: var(--text-danger);
+            line-height: 4px;
+            margin: 0;
+            padding: 0;
+            visibility: hidden; /* 默认隐藏，保留高度占位 */
+            font-weight: 400;
+        }
+        .scale-error-text.show {
+            visibility: visible;
+        }
+        .error-message {
+            color: var(--text-danger);
+        }
         .hidden {
             display: none;
         }
@@ -418,6 +437,49 @@ text-align: center;            padding: 16px 0 10px;
             display: block;
             opacity: 1;
         }
+
+        /* Tooltip Styles */
+        .custom-tooltip {
+            position: fixed;
+            z-index: 2500;
+            background-color: rgba(0, 0, 0, 0.85);
+            color: #fff;
+            padding: 8px 10px;
+            border-radius: 8px;
+            font-size: 12px;
+            line-height: 1.4;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s ease;
+            max-width: 220px;
+            text-align: center;
+            padding-bottom: 14px; /* 给箭头预留空间 */
+        }
+        .custom-tooltip.show {
+            opacity: 1;
+        }
+
+        /* 箭头：朝下指向勾选框（tooltip 在上方时），left 由 JS 动态设为复选框中心 */
+        .custom-tooltip::after {
+            content: '';
+            position: absolute;
+            left: var(--arrow-left, 50%);
+            bottom: -6px;
+            transform: translateX(-50%);
+            border-width: 6px 6px 0 6px;
+            border-style: solid;
+            border-color: rgba(0, 0, 0, 0.85) transparent transparent transparent;
+            width: 0;
+            height: 0;
+        }
+
+        /* 当 tooltip 放在复选框下方时，箭头朝上指向勾选框 */
+        .custom-tooltip.bottom::after {
+            top: -6px;
+            bottom: auto;
+            border-width: 0 6px 6px 6px;
+            border-color: transparent transparent rgba(0, 0, 0, 0.85) transparent;
+        }
     </style>
 </head>
 <body>
@@ -452,6 +514,9 @@ text-align: center;            padding: 16px 0 10px;
             <label class="checkbox-row">
                 <input type="checkbox" class="checkbox" data-scale="4"> <span>4x</span>
             </label>
+        </div>
+        <div class="scale-error-container">
+            <p id="scaleErrorText" class="scale-error-text">请选择一个导出尺寸</p>
         </div>
     </div>
 
@@ -493,6 +558,9 @@ text-align: center;            padding: 16px 0 10px;
             <div id="currentKeyContainer" style="margin-bottom: 8px; font-size: 12px; color: var(--text-secondary);">
                 当前 Key: <span id="currentKeyText" style="color: var(--text-primary); font-family: monospace;"></span>
             </div>
+            <div id="compressionCountContainer" style="margin-bottom: 8px; font-size: 12px; color: var(--text-secondary);">
+                已使用 <span id="compressionCountNum">--</span> / 500 次
+            </div>
             <div class="input-wrapper">
                 <input type="password" id="modalKeyInput" class="modal-input" placeholder="输入 API Key">
                 <div id="toggleKeyVisibility" class="toggle-icon">
@@ -503,6 +571,18 @@ text-align: center;            padding: 16px 0 10px;
         <div class="modal-footer">
             <button id="modalCancelBtn" class="btn btn-outline text-gray-700 font-normal min-h-[36px] h-[36px] px-4 rounded-lg text-xs hover:text-gray-800 hover:bg-[#f5f5f5]">取消</button>
             <button id="modalSaveBtn" class="btn btn-primary text-white min-h-[36px] h-[36px] px-4 rounded-lg text-xs font-normal border-none hover:bg-[#2530C9]">保存</button>
+        </div>
+    </div>
+</div>
+
+<div id="keyLimitModal" class="modal-overlay">
+    <div class="modal-content" style="width: 260px;">
+        <div class="modal-header">无法导出</div>
+        <div class="modal-body" style="font-size: 12px; line-height: 1.6;">
+            Key 使用次数已达到 500 次限制
+        </div>
+        <div class="modal-footer">
+            <button id="keyLimitModalCloseBtn" class="btn btn-primary text-white w-full min-h-[36px] h-[36px] px-4 rounded-lg text-xs font-normal border-none hover:bg-[#2530C9]">知道了</button>
         </div>
     </div>
 </div>
@@ -538,6 +618,7 @@ text-align: center;            padding: 16px 0 10px;
         const noSelectionMessage = document.getElementById('noSelectionMessage');
 
         const scaleOptionsDiv = document.getElementById('scaleOptions');
+        const scaleErrorText = document.getElementById('scaleErrorText');
         const formatOptionsDiv = document.getElementById('formatOptions');
         const zipDownloadCheckbox = document.getElementById('zipDownloadCheckbox');
         const cloudCompressCheckbox = document.getElementById('cloudCompressCheckbox');
@@ -553,12 +634,15 @@ text-align: center;            padding: 16px 0 10px;
         const modalCancelBtn = document.getElementById('modalCancelBtn');
         const toggleKeyVisibility = document.getElementById('toggleKeyVisibility');
         const currentKeyText = document.getElementById('currentKeyText');
+        const compressionCountNum = document.getElementById('compressionCountNum');
         const toast = document.getElementById('toast');
         
         // Info Modal Elements
         const infoIcon = document.getElementById('infoIcon');
         const infoModal = document.getElementById('infoModal');
         const infoModalCloseBtn = document.getElementById('infoModalCloseBtn');
+        const keyLimitModal = document.getElementById('keyLimitModal');
+        const keyLimitModalCloseBtn = document.getElementById('keyLimitModalCloseBtn');
 
         // --- Icons (from images/view.svg and images/hide.svg) ---
         // View (Show Password / Eye Open)
@@ -578,7 +662,17 @@ text-align: center;            padding: 16px 0 10px;
         let storedApiKey = '';
         let hasShownInfoModal = false;
         let pendingAction = null; // 'toggleCheckbox' | 'openManageKey'
+        const MAX_EXPORT_ITEMS = 5;
         let selectedNodeIds = new Set(); // Stores IDs of nodes checked in the UI
+        // 记录用户在插件里的“勾选顺序”，用于展示排序与导出顺序
+        let selectedNodeIdsOrder = [];
+        // 当前来自主线程的可展示候选列表（最多 MAX_EXPORT_ITEMS）
+        let currentCandidateNodes = [];
+        // 记录上一次来自 Figma 的选中总数，用于避免 toast 反复刷屏
+        let lastFigmaSelectedCount = 0;
+        // 超过上限后冻结候选列表，避免后续 selection-change 把 UI 展示项替换掉
+        let isOverLimitFrozen = false;
+        let frozenCandidateNodes = [];
         let exportedFiles = [];
         let downloadQueue = [];
         let downloading = false;
@@ -787,7 +881,22 @@ text-align: center;            padding: 16px 0 10px;
                 exportButton.textContent = `导出 ${count} 个内容`;
                 exportButton.style.backgroundColor = ''; // Reset to default CSS
             }
-            exportButton.disabled = count === 0 || selectedScales.length === 0;
+            const disabled = count === 0 || selectedScales.length === 0;
+            exportButton.disabled = disabled;
+            // 为了不受 DaisyUI 的 btn-primary 覆盖影响：禁用时强制灰色
+            exportButton.style.backgroundColor = disabled ? '#C9CDD4' : '';
+            updateScaleError();
+        }
+
+        function updateScaleError() {
+            const shouldShowError = selectedNodeIds.size > 0 && selectedScales.length === 0;
+            if (!scaleErrorText) return;
+            if (shouldShowError) {
+                scaleErrorText.textContent = '请选择一个导出尺寸';
+                scaleErrorText.classList.add('show');
+            } else {
+                scaleErrorText.classList.remove('show');
+            }
         }
 
         let toastTimeout;
@@ -803,84 +912,327 @@ text-align: center;            padding: 16px 0 10px;
                 }, duration);
             }
         }
+
+        // “必须打包下载”说明 Tooltip（取代 Toast）
+        let zipForceZipTooltipEl = null;
+        let zipForceZipTooltipTimer = null;
+        function showZipForceZipTooltip() {
+            if (!zipForceZipTooltipEl) {
+                zipForceZipTooltipEl = document.createElement('div');
+                zipForceZipTooltipEl.className = 'custom-tooltip';
+                document.body.appendChild(zipForceZipTooltipEl);
+            }
+            zipForceZipTooltipEl.innerHTML = '由于文件较多<br>打包后一键下载';
+
+            const rect = zipDownloadCheckbox.getBoundingClientRect();
+            const centerX = rect.left + rect.width / 2;
+            let top = rect.top - 8;
+            let placement = 'top';
+
+            zipForceZipTooltipEl.classList.add('show');
+            zipForceZipTooltipEl.classList.remove('bottom');
+
+            // 先让它渲染出来，再测量并修正位置，避免被裁剪
+            requestAnimationFrame(() => {
+                const tooltipRect = zipForceZipTooltipEl.getBoundingClientRect();
+                const padding = 8;
+                const vw = window.innerWidth;
+                const vh = window.innerHeight;
+
+                // 默认：箭头朝下（tooltip 在上方）
+                if (top - tooltipRect.height < padding) {
+                    // 如果在上方会被顶出屏幕，则放到底部，箭头朝上
+                    placement = 'bottom';
+                    top = rect.bottom + 8;
+                    zipForceZipTooltipEl.classList.add('bottom');
+                    zipForceZipTooltipEl.style.transform = 'translate(-50%, 0)';
+                } else {
+                    zipForceZipTooltipEl.style.transform = 'translate(-50%, -100%)';
+                }
+
+                let left = centerX;
+                const tooltipHalf = tooltipRect.width / 2;
+                left = Math.max(padding + tooltipHalf, Math.min(vw - padding - tooltipHalf, left));
+
+                zipForceZipTooltipEl.style.left = `${left}px`;
+                zipForceZipTooltipEl.style.top = `${top}px`;
+                const checkboxCenterX = rect.left + rect.width / 2;
+                const arrowLeft = tooltipRect.width / 2 + (checkboxCenterX - left);
+                zipForceZipTooltipEl.style.setProperty('--arrow-left', `${arrowLeft}px`);
+            });
+
+            if (zipForceZipTooltipTimer) clearTimeout(zipForceZipTooltipTimer);
+            zipForceZipTooltipTimer = setTimeout(() => {
+                zipForceZipTooltipEl && zipForceZipTooltipEl.classList.remove('show');
+            }, 2500);
+        }
+
+        function hideZipForceZipTooltip() {
+            if (zipForceZipTooltipEl) {
+                zipForceZipTooltipEl.classList.remove('show');
+            }
+            if (zipForceZipTooltipTimer) {
+                clearTimeout(zipForceZipTooltipTimer);
+                zipForceZipTooltipTimer = null;
+            }
+        }
+
+        function isZipForceRequired() {
+            return selectedNodeIds.size > 1 || selectedScales.length > 1;
+        }
+
+        // 鼠标悬停提示：用于替代 toast（并且避开 disabled input 无事件的问题）
+        const zipDownloadWrap = zipDownloadCheckbox ? (zipDownloadCheckbox.closest('label') || zipDownloadCheckbox.parentElement) : null;
+        if (zipDownloadWrap) {
+            zipDownloadWrap.addEventListener('mouseenter', () => {
+                if (isZipForceRequired()) showZipForceZipTooltip();
+            });
+            zipDownloadWrap.addEventListener('mouseleave', () => {
+                hideZipForceZipTooltip();
+            });
+        }
         
         let pendingRecompress = 0;
         let finalizeAfterRecompress = false;
 
-        async function tinifyCompress(bytes, apiKey) {
-            try {
-                // Remove 'api:' prefix if user accidentally included it
-                const key = apiKey.replace(/^api:/, '');
-                const auth = 'Basic ' + btoa('api:' + key);
-                
-                // Cloudflare Worker URL
-                // 如果你有自己的 Cloudflare Worker，请在此处填写，例如: 'https://tinypng-proxy.yourname.workers.dev'
-                // 注意：如果使用 Cloudflare Worker，需要确保 URL 以 '?url=' 结尾，或者在下面 fetch 中自行处理
-                // 本代码默认支持两种格式：
-                // 1. corsproxy.io: https://corsproxy.io/?
-                // 2. Cloudflare Worker: https://your-worker.dev/?url=
-                
-                const CF_WORKER_URL = 'https://tinypng-proxy.cxqtouch.workers.dev/'; // 在此处填入你的 Worker URL
-                
-                let PROXY_URL = 'https://corsproxy.io/?'; // 默认使用公共代理
-                
-                if (CF_WORKER_URL) {
-                    // 确保 Worker URL 以 ?url= 结尾
-                    PROXY_URL = CF_WORKER_URL.includes('?') ? CF_WORKER_URL : CF_WORKER_URL + '?url=';
-                }
+        let updatingZipEnforcement = false;
 
-                const API_URL = 'https://api.tinify.com/shrink';
-                
-                console.log(`[TinyPNG] Starting compression via proxy (${CF_WORKER_URL ? 'Cloudflare' : 'Public'})...`);
-                
-                const resp = await fetch(PROXY_URL + encodeURIComponent(API_URL), {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': auth,
-                        'Content-Type': 'application/octet-stream'
-                    },
-                    body: new Uint8Array(bytes)
-                });
+        // TinyPNG 压缩并发上限（只限制“压缩任务”的并发，不限制导出/选择数量）
+        const MAX_CONCURRENT_COMPRESS_TASKS = 3;
+        let compressQueue = [];
+        let activeCompressors = 0;
 
-                if (!resp.ok) {
-                    const errText = await resp.text();
-                    console.error('TinyPNG Error:', resp.status, errText);
-                    try {
-                        const errJson = JSON.parse(errText);
-                        if (errJson.message) throw new Error(errJson.message);
-                        if (errJson.error) throw new Error(errJson.error);
-                    } catch (_) {}
-                    throw new Error(`TinyPNG API Error: ${resp.status} ${resp.statusText}`);
+        // TinyPNG 压缩统计（用于给用户区分“导出成功”与“压缩成功”）
+        let tinyPngTried = 0; // 实际尝试压缩的图片数
+        let tinyPngServiceSucceeded = 0; // TinyPNG 服务请求成功的图片数（不保证一定变小）
+        let tinyPngFailed = 0; // 请求/下载任一环节失败的图片数（将回退原图）
+        let tinyPngReduced = 0; // 服务返回且“确实变小”的图片数
+
+        function finalizeAfterTinyPNG() {
+            if (tinyPngTried > 0) {
+                if (tinyPngFailed > 0) {
+                    showMessage(
+                        `TinyPNG 压缩失败：${tinyPngFailed}/${tinyPngTried} 张；有效压缩（变小）${tinyPngReduced}/${tinyPngTried} 张。`,
+                        'error'
+                    );
+                } else {
+                    showMessage(
+                        `TinyPNG 压缩完成：有效压缩（变小）${tinyPngReduced}/${tinyPngTried} 张。`,
+                        'info'
+                    );
                 }
-                const meta = await resp.json();
-                if (!(meta && meta.output && meta.output.url)) throw new Error('Invalid TinyPNG response');
-                
-                console.log('[TinyPNG] Downloading compressed image from:', meta.output.url);
-                const outResp = await fetch(PROXY_URL + encodeURIComponent(meta.output.url));
-                if (!outResp.ok) throw new Error(`Download failed: ${outResp.status}`);
-                const arr = await outResp.arrayBuffer();
-                return new Uint8Array(arr);
-            } catch (e) {
-                console.error('TinyPNG Exception:', e);
-                // Propagate error to be shown in UI
-                throw e;
             }
+
+            if (isZipDownload) {
+                const blob = buildZip(exportedFiles);
+                const a = document.createElement('a');
+                const url = URL.createObjectURL(blob);
+                a.href = url;
+                a.download = 'export.zip';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                setTimeout(() => URL.revokeObjectURL(url), 1000);
+                toggleExportButton(true);
+                showToast('导出成功！');
+            } else if (downloadQueue.length === 0) {
+                toggleExportButton(true);
+                showToast('导出成功！');
+            }
+        }
+
+        function scheduleCompressQueue() {
+            while (activeCompressors < MAX_CONCURRENT_COMPRESS_TASKS && compressQueue.length > 0) {
+                const task = compressQueue.shift();
+                activeCompressors++;
+
+                (async () => {
+                    const { filename, bytes, apiKey } = task;
+                    let newBytes = bytes;
+                    const origLen = bytes.length || (bytes.byteLength || 0);
+
+                    try {
+                        const compressedBytes = await tinifyCompress(bytes, apiKey);
+                        console.log(`[Compression] Original: ${origLen} bytes, Compressed: ${compressedBytes.length} bytes`);
+
+                        tinyPngServiceSucceeded++;
+                        if (compressedBytes.length < origLen) {
+                            newBytes = compressedBytes;
+                            tinyPngReduced++;
+                        } else {
+                            console.warn(`TinyPNG compression did not reduce file size. Orig: ${origLen}, New: ${compressedBytes.length}`);
+                            showMessage(
+                                `提示：TinyPNG 未能进一步压缩此图片 (原: ${(origLen / 1024).toFixed(1)}KB, 新: ${(compressedBytes.length / 1024).toFixed(1)}KB)`,
+                                'info'
+                            );
+                        }
+                    } catch (e) {
+                        tinyPngFailed++;
+                        console.error('Compression failed:', e);
+                        if (e && (e.isKeyLimit || (e.message && (String(e.message).includes('429') || String(e.message).includes('KEY_LIMIT'))))) {
+                            savedCompressionCount = 500;
+                            if (compressionCountNum) updateCompressionCountDisplay();
+                            if (toastTimeout) { clearTimeout(toastTimeout); toastTimeout = null; }
+                            toast && toast.classList.remove('show');
+                            keyLimitModal && (keyLimitModal.style.display = 'flex');
+                        } else {
+                            showMessage(`压缩失败：${e.message || '未知错误'}`, 'error');
+                        }
+                    }
+
+                    const finalLen = newBytes.length || (newBytes.byteLength || 0);
+                    const saved = Math.max(0, origLen - finalLen);
+                    const pct = origLen > 0 ? Math.round((saved / origLen) * 100) : 0;
+
+                    compressionStats.push({ filename, origLen, finalLen, pct });
+                    if (isZipDownload) {
+                        exportedFiles.push({ filename, bytes: newBytes });
+                    } else {
+                        enqueueDownload(filename, newBytes);
+                    }
+
+                    pendingRecompress--;
+                    activeCompressors--;
+                    scheduleCompressQueue();
+
+                    if (finalizeAfterRecompress && pendingRecompress === 0) {
+                        finalizeAfterRecompress = false;
+                        finalizeAfterTinyPNG();
+                    }
+                })();
+            }
+        }
+
+        function enqueueCompressionTask({ filename, bytes, apiKey }) {
+            pendingRecompress++;
+            tinyPngTried++;
+            compressQueue.push({ filename, bytes, apiKey });
+            scheduleCompressQueue();
+        }
+
+        async function tinifyCompress(bytes, apiKey) {
+            // Remove 'api:' prefix if user accidentally included it
+            const key = apiKey.replace(/^api:/, '');
+            const auth = 'Basic ' + btoa('api:' + key);
+            
+            // Cloudflare Worker URL（作为优先代理）
+            // 如果你的 Worker 不可用，会自动回退到 corsproxy.io
+            const CF_WORKER_URL = 'https://tinypng-proxy.cxqtouch.workers.dev/'; // 你的 Worker 地址
+
+            const API_URL = 'https://api.tinify.com/shrink';
+
+            const proxies = [];
+            if (CF_WORKER_URL) {
+                // Worker 侧要求：通过 query 参数 `url` 透传目标
+                const workerProxyUrl = CF_WORKER_URL.includes('?') ? CF_WORKER_URL : CF_WORKER_URL + '?url=';
+                proxies.push({ label: 'Cloudflare Worker', proxyUrl: workerProxyUrl });
+            }
+
+            // 默认回退代理（更稳定时也可以放到前面）
+            proxies.push({ label: 'corsproxy.io', proxyUrl: 'https://corsproxy.io/?' });
+
+            // 每个代理最多重试次数（不成功就切换到下一个代理）
+            const MAX_ATTEMPTS_PER_PROXY = 2; // 总共 2 次：第一次 + 1 次重试
+            const BASE_BACKOFF_MS = 400;
+            const jitter = () => Math.floor(Math.random() * 200);
+            const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+            const SHRINK_TIMEOUT_MS = 20000; // 15~25s：缩小请求超时
+            const DOWNLOAD_TIMEOUT_MS = 20000; // 15~25s：下载压缩结果超时
+
+            async function fetchWithTimeout(url, fetchOptions, timeoutMs) {
+                const controller = new AbortController();
+                const timerId = setTimeout(() => controller.abort(), timeoutMs);
+                try {
+                    return await fetch(url, { ...fetchOptions, signal: controller.signal });
+                } finally {
+                    clearTimeout(timerId);
+                }
+            }
+
+            let lastError = null;
+            for (const proxy of proxies) {
+                for (let attempt = 1; attempt <= MAX_ATTEMPTS_PER_PROXY; attempt++) {
+                    try {
+                        console.log(`[TinyPNG] Starting compression via ${proxy.label} (attempt ${attempt}/${MAX_ATTEMPTS_PER_PROXY})...`);
+                        
+                        const resp = await fetchWithTimeout(
+                            proxy.proxyUrl + encodeURIComponent(API_URL),
+                            {
+                                method: 'POST',
+                                headers: {
+                                    'Authorization': auth,
+                                    'Content-Type': 'application/octet-stream'
+                                },
+                                body: new Uint8Array(bytes)
+                            },
+                            SHRINK_TIMEOUT_MS
+                        );
+
+                        if (!resp.ok) {
+                            const errText = await resp.text();
+                            console.error(`[TinyPNG] Proxy(${proxy.label}) TinyPNG Error:`, resp.status, errText);
+                            if (resp.status === 429) {
+                                parent.postMessage({ pluginMessage: { type: 'save-compression-count', count: 500 } }, '*');
+                                const err = new Error('KEY_LIMIT_REACHED');
+                                err.isKeyLimit = true;
+                                throw err;
+                            }
+                            try {
+                                const errJson = JSON.parse(errText);
+                                if (errJson.message) throw new Error(errJson.message);
+                                if (errJson.error) throw new Error(errJson.error);
+                            } catch (_) {}
+                            throw new Error(`TinyPNG API Error: ${resp.status} ${resp.statusText}`);
+                        }
+                        const compCount = resp.headers.get('Compression-Count') || resp.headers.get('compression-count');
+                        if (compCount != null) {
+                            const n = parseInt(compCount, 10);
+                            if (!isNaN(n) && n >= 0) {
+                                parent.postMessage({ pluginMessage: { type: 'save-compression-count', count: n } }, '*');
+                            }
+                        }
+                        const meta = await resp.json();
+                        if (!(meta && meta.output && meta.output.url)) {
+                            throw new Error('Invalid TinyPNG response');
+                        }
+                        
+                        console.log('[TinyPNG] Downloading compressed image from:', meta.output.url);
+                        const outResp = await fetchWithTimeout(
+                            proxy.proxyUrl + encodeURIComponent(meta.output.url),
+                            {},
+                            DOWNLOAD_TIMEOUT_MS
+                        );
+                        if (!outResp.ok) throw new Error(`Download failed: ${outResp.status}`);
+
+                        const arr = await outResp.arrayBuffer();
+                        return new Uint8Array(arr);
+                    } catch (e) {
+                        lastError = e;
+                        console.warn(`[TinyPNG] Proxy failed: ${proxy.label} (attempt ${attempt}/${MAX_ATTEMPTS_PER_PROXY})`, e);
+                        if (attempt < MAX_ATTEMPTS_PER_PROXY) {
+                            // 轻微退避，减少瞬时网络抖动导致的连续失败
+                            await sleep(BASE_BACKOFF_MS * attempt + jitter());
+                        }
+                    }
+                }
+            }
+
+            console.error('TinyPNG Exception (all proxies failed):', lastError);
+            throw lastError || new Error('TinyPNG compression failed');
         }
         
         function updateZipEnforcement() {
             const count = selectedNodeIds.size;
             if (!zipDownloadCheckbox) return;
             // 多个图层 或 多个尺寸 时，强制打包下载
-            if (count > 1 || selectedScales.length > 1) {
-                zipDownloadCheckbox.checked = true;
-                zipDownloadCheckbox.disabled = true;
-                isZipDownload = true;
-            } else {
-                zipDownloadCheckbox.disabled = false;
-                // 1 个或 0 个图层时，且只有1个尺寸，默认不勾选
-                zipDownloadCheckbox.checked = false;
-                isZipDownload = false;
-            }
+            const shouldForceZip = count > 1 || selectedScales.length > 1;
+            updatingZipEnforcement = true;
+            zipDownloadCheckbox.checked = shouldForceZip;
+            zipDownloadCheckbox.disabled = false; // 不禁用，便于用户点击时提示说明
+            zipDownloadCheckbox.removeAttribute('disabled');
+            isZipDownload = shouldForceZip;
+            updatingZipEnforcement = false;
         }
 
         // --- Event Listeners ---
@@ -899,11 +1251,13 @@ text-align: center;            padding: 16px 0 10px;
                 }
 
                 if (selectedScales.length === 0) {
-                    showMessage('请至少选择一个导出尺寸！', 'error');
+                    updateExportButtonText(); // 同步禁用按钮并展示下方错误
+                    showMessage('', 'info'); // 清理底部提示，避免高度/样式冲突
                 } else {
-                    showMessage('');
+                    // 清理下方错误（如果之前有）
+                    updateExportButtonText();
+                    showMessage('', 'info'); // 清理底部提示
                 }
-                updateExportButtonText();
                 updateZipEnforcement();
             }
         });
@@ -927,6 +1281,18 @@ text-align: center;            padding: 16px 0 10px;
 
         // Checkbox Handlers
         zipDownloadCheckbox.addEventListener('change', (event) => {
+            if (updatingZipEnforcement) return;
+
+            const count = selectedNodeIds.size;
+            const shouldForceZip = count > 1 || selectedScales.length > 1;
+            if (shouldForceZip) {
+                // 必须打包下载：不允许用户更改，并提示原因
+                event.target.checked = true;
+                isZipDownload = true;
+                showZipForceZipTooltip();
+                return;
+            }
+
             isZipDownload = event.target.checked;
         });
         
@@ -942,9 +1308,9 @@ text-align: center;            padding: 16px 0 10px;
         cloudCompressCheckbox.addEventListener('change', (event) => {
             if (event.target.checked) {
                 if (!storedApiKey) {
-                    event.preventDefault(); // Prevent checking if no key
+                    event.preventDefault();
                     event.target.checked = false;
-                    apiKeyModal.style.display = 'flex';
+                    openManageKeyModal();
                 } else {
                     isCloudCompress = true;
                 }
@@ -953,14 +1319,18 @@ text-align: center;            padding: 16px 0 10px;
             }
         });
 
+        let savedCompressionCount = null;
+        function updateCompressionCountDisplay() {
+            if (compressionCountNum) {
+                compressionCountNum.textContent = savedCompressionCount != null ? String(savedCompressionCount) : '--';
+            }
+        }
         function openManageKeyModal() {
             modalKeyInput.value = storedApiKey || '';
             currentKeyText.textContent = storedApiKey || '未设置';
-            
-            // Reset to password mode when opening
+            updateCompressionCountDisplay();
             modalKeyInput.type = 'password';
             toggleKeyVisibility.innerHTML = ICON_HIDE;
-            
             apiKeyModal.style.display = 'flex';
         }
 
@@ -1009,6 +1379,11 @@ text-align: center;            padding: 16px 0 10px;
         modalCancelBtn.addEventListener('click', () => {
             apiKeyModal.style.display = 'none';
         });
+        if (keyLimitModalCloseBtn) {
+            keyLimitModalCloseBtn.addEventListener('click', () => {
+                keyLimitModal.style.display = 'none';
+            });
+        }
 
         // Toggle Key Visibility
         toggleKeyVisibility.addEventListener('click', () => {
@@ -1046,10 +1421,22 @@ text-align: center;            padding: 16px 0 10px;
 
         // Export button click
         exportButton.onclick = () => {
+            if (isCloudCompress && storedApiKey && savedCompressionCount != null && savedCompressionCount >= 500) {
+                keyLimitModal && (keyLimitModal.style.display = 'flex');
+                return;
+            }
             exportedFiles = [];
+            compressQueue = [];
+            activeCompressors = 0;
             allComplete = false;
             enqueuedCount = 0;
             compressionStats = [];
+            pendingRecompress = 0;
+            finalizeAfterRecompress = false;
+            tinyPngTried = 0;
+            tinyPngServiceSucceeded = 0;
+            tinyPngFailed = 0;
+            tinyPngReduced = 0;
             toggleExportButton(false);
             showMessage('', 'info');
 
@@ -1071,7 +1458,7 @@ text-align: center;            padding: 16px 0 10px;
                 pluginMessage: {
                     type: 'export-image',
                     settings: {
-                        nodeIds: Array.from(selectedNodeIds),
+                        nodeIds: selectedNodeIdsOrder,
                         scales: selectedScales,
                         format: selectedFormat,
                         compress: false // Always false for local export, we use TinyPNG now
@@ -1083,13 +1470,17 @@ text-align: center;            padding: 16px 0 10px;
         // Select All Layers
         selectAllLayersLink.addEventListener('click', (event) => {
             event.preventDefault();
+            selectedNodeIds.clear();
+            selectedNodeIdsOrder = [];
             selectedLayersContainer.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
-                if (!checkbox.checked) {
-                    checkbox.checked = true;
-                    selectedNodeIds.add(checkbox.dataset.nodeId);
+                checkbox.checked = true;
+                const id = checkbox.dataset.nodeId;
+                if (!selectedNodeIds.has(id)) {
+                    selectedNodeIds.add(id);
+                    selectedNodeIdsOrder.push(id);
                 }
             });
-            selectedLayerCountSpan.textContent = selectedNodeIds.size;
+            selectedLayerCountSpan.textContent = selectedNodeIdsOrder.length;
             updateExportButtonText();
             updateZipEnforcement();
             requestResize();
@@ -1099,6 +1490,7 @@ text-align: center;            padding: 16px 0 10px;
         clearAllLayersLink.addEventListener('click', (event) => {
             event.preventDefault();
             selectedNodeIds.clear();
+            selectedNodeIdsOrder = [];
             selectedLayersContainer.innerHTML = ''; // Clear the displayed list
             selectedLayersContainer.appendChild(noSelectionMessage);
             noSelectionMessage.style.display = 'block';
@@ -1116,8 +1508,8 @@ text-align: center;            padding: 16px 0 10px;
             if (pluginMessage.type === 'load-settings') {
                 storedApiKey = pluginMessage.apiKey || '';
                 hasShownInfoModal = pluginMessage.hasShownInfoModal || false;
-                
-                // If key exists, show manage link
+                savedCompressionCount = pluginMessage.compressionCount ?? null;
+                if (compressionCountNum) updateCompressionCountDisplay();
                 if (storedApiKey) {
                     manageKeyLink.style.display = 'inline-block';
                     currentKeyText.textContent = storedApiKey;
@@ -1128,17 +1520,99 @@ text-align: center;            padding: 16px 0 10px;
             } else if (pluginMessage.type === 'api-key-saved') {
                 storedApiKey = pluginMessage.apiKey;
                 manageKeyLink.style.display = 'inline-block';
+            } else if (pluginMessage.type === 'compression-count-updated') {
+                savedCompressionCount = pluginMessage.count ?? null;
+                if (compressionCountNum) updateCompressionCountDisplay();
             } else if (pluginMessage.type === 'selection-change') {
-                const { nodes } = pluginMessage;
-                selectedLayersContainer.innerHTML = ''; // Clear previous layers
-                selectedNodeIds.clear(); // Clear previously selected IDs
+                const { nodes, totalSelectedCount } = pluginMessage;
+                const incomingNodes = nodes || [];
+                // 兜底：如果主线程未发送 totalSelectedCount，就用 incomingNodes.length 作为“超过上限”的判断依据
+                const incomingCount = (typeof totalSelectedCount === 'number') ? totalSelectedCount : incomingNodes.length;
+                if (incomingCount > MAX_EXPORT_ITEMS && lastFigmaSelectedCount <= MAX_EXPORT_ITEMS) {
+                    showToast('最多可一次导出5个内容', 2500);
+                }
+                lastFigmaSelectedCount = incomingCount;
 
-                if (nodes.length === 0) {
+                const overLimit = incomingCount > MAX_EXPORT_ITEMS;
+
+                // 只渲染前 5 个候选；当超过上限时，冻结“当前 UI 展示的那 5 个”
+                // 避免主线程 slice(0,5) 在新增第6个时发生替换，导致 UI 替换旧选择项
+                const fallbackCandidateNodes = incomingNodes.slice(0, MAX_EXPORT_ITEMS);
+                const prevCandidateNodes = currentCandidateNodes.slice();
+
+                if (overLimit) {
+                    if (!isOverLimitFrozen) {
+                        isOverLimitFrozen = true;
+                        frozenCandidateNodes = prevCandidateNodes.length > 0 ? prevCandidateNodes.slice() : fallbackCandidateNodes.slice();
+                    }
+                    currentCandidateNodes = frozenCandidateNodes;
+                } else {
+                    isOverLimitFrozen = false;
+                    frozenCandidateNodes = [];
+                    currentCandidateNodes = fallbackCandidateNodes;
+                }
+
+                const newIds = currentCandidateNodes.map(n => n.id);
+                const newSet = new Set(newIds);
+                const oldSet = new Set(selectedNodeIds);
+
+                selectedLayersContainer.innerHTML = ''; // Clear previous layers
+
+                if (currentCandidateNodes.length === 0) {
+                    selectedNodeIds.clear();
+                    selectedNodeIdsOrder = [];
                     selectedLayersContainer.appendChild(noSelectionMessage);
                     noSelectionMessage.style.display = 'block';
+                    selectedLayerCountSpan.textContent = 0;
+                    updateExportButtonText();
+                    updateZipEnforcement();
+                    toggleExportButton(true);
+                    requestResize();
+                    return;
+                }
+
+                noSelectionMessage.style.display = 'none';
+
+                if (overLimit) {
+                    // 超过上限：toast 告知后，不要用最新的候选覆盖已勾选内容
+                    // 仅在当前没有任何已勾选时，初始化为当前候选里的前 MAX_EXPORT_ITEMS
+                    if (selectedNodeIdsOrder.length === 0) {
+                        selectedNodeIds.clear();
+                        selectedNodeIdsOrder = [];
+                        newIds.forEach(id => {
+                            selectedNodeIds.add(id);
+                            selectedNodeIdsOrder.push(id);
+                        });
+                    }
                 } else {
-                    noSelectionMessage.style.display = 'none';
-                    nodes.slice(0, 10).forEach(node => { // Limit to 10 nodes
+                    // 不超过上限：同步勾选集合与“勾选顺序”
+                    // - 移除已不再选中的 id
+                    selectedNodeIdsOrder = selectedNodeIdsOrder.filter(id => newSet.has(id));
+                    // - 追加新出现的 id（按本次 nodes 的顺序追加）
+                    newIds.forEach(id => {
+                        if (!oldSet.has(id)) selectedNodeIdsOrder.push(id);
+                    });
+
+                    // 重建 Set（export 逻辑用 Set.size 来控制按钮可用性）
+                    selectedNodeIds.clear();
+                    newIds.forEach(id => selectedNodeIds.add(id));
+                }
+
+                function renderLayerList(renderNodes) {
+                    selectedLayersContainer.innerHTML = '';
+
+                    const orderIndex = new Map(selectedNodeIdsOrder.map((id, idx) => [id, idx]));
+                    const originalIndex = new Map(renderNodes.map((n, idx) => [n.id, idx]));
+                    const INF = 1e9;
+
+                    const sortedNodes = renderNodes.slice().sort((a, b) => {
+                        const ai = orderIndex.has(a.id) ? orderIndex.get(a.id) : INF;
+                        const bi = orderIndex.has(b.id) ? orderIndex.get(b.id) : INF;
+                        if (ai !== bi) return ai - bi;
+                        return (originalIndex.get(a.id) ?? INF) - (originalIndex.get(b.id) ?? INF);
+                    });
+
+                    sortedNodes.forEach(node => {
                         let thumbnailUrl = '';
                         if (node.thumbnail) {
                             const blob = new Blob([node.thumbnail], { type: 'image/png' });
@@ -1148,27 +1622,46 @@ text-align: center;            padding: 16px 0 10px;
                         const layerItem = document.createElement('div');
                         layerItem.className = 'layer-item';
                         layerItem.innerHTML = `
-                            <input type="checkbox" class="checkbox" data-node-id="${node.id}" checked>
+                            <input type="checkbox" class="checkbox" data-node-id="${node.id}" ${selectedNodeIds.has(node.id) ? 'checked' : ''}>
                             <img src="${thumbnailUrl}" class="thumbnail">
                             <div class="layer-info">
                                 <div class="layer-name">${node.name}</div>
                                 <div class="layer-dims">${node.width} × ${node.height}</div>
                             </div>
                         `;
+
                         const checkbox = layerItem.querySelector('input[type="checkbox"]');
                         checkbox.addEventListener('change', (e) => {
+                            const id = node.id;
                             if (e.target.checked) {
-                                selectedNodeIds.add(node.id);
+                                if (!selectedNodeIds.has(id)) {
+                                    if (selectedNodeIds.size >= MAX_EXPORT_ITEMS) {
+                                        e.target.checked = false;
+                                        showToast('最多可一次导出5个内容', 2500);
+                                        return;
+                                    }
+                                    selectedNodeIds.add(id);
+                                    selectedNodeIdsOrder.push(id);
+                                }
                             } else {
-                                selectedNodeIds.delete(node.id);
+                                if (selectedNodeIds.has(id)) {
+                                    selectedNodeIds.delete(id);
+                                    selectedNodeIdsOrder = selectedNodeIdsOrder.filter(x => x !== id);
+                                }
                             }
                             selectedLayerCountSpan.textContent = selectedNodeIds.size;
                             updateExportButtonText();
+                            updateZipEnforcement();
+                            requestResize();
+                            renderLayerList(currentCandidateNodes);
                         });
+
                         selectedLayersContainer.appendChild(layerItem);
-                        selectedNodeIds.add(node.id); // Add by default when displayed
                     });
                 }
+
+                renderLayerList(currentCandidateNodes);
+
                 selectedLayerCountSpan.textContent = selectedNodeIds.size;
                 updateExportButtonText();
                 updateZipEnforcement();
@@ -1177,56 +1670,7 @@ text-align: center;            padding: 16px 0 10px;
             } else if (pluginMessage.type === 'export-complete-data') {
                 const { filename, bytes } = pluginMessage;
                 if ((selectedFormat === 'PNG' || selectedFormat === 'JPG') && isCloudCompress && storedApiKey) {
-                    pendingRecompress++;
-                    (async () => {
-                        let newBytes = bytes;
-                        const origLen = bytes.length || (bytes.byteLength || 0);
-                        
-                        try {
-                            const compressedBytes = await tinifyCompress(bytes, storedApiKey);
-                            console.log(`[Compression] Original: ${origLen} bytes, Compressed: ${compressedBytes.length} bytes`);
-                            
-                            if (compressedBytes.length < origLen) {
-                                newBytes = compressedBytes;
-                            } else {
-                                console.warn(`TinyPNG compression did not reduce file size. Orig: ${origLen}, New: ${compressedBytes.length}`);
-                                showMessage(`提示：TinyPNG 未能进一步压缩此图片 (原: ${(origLen/1024).toFixed(1)}KB, 新: ${(compressedBytes.length/1024).toFixed(1)}KB)`, 'info');
-                            }
-                        } catch (e) {
-                            console.error('Compression failed:', e);
-                            showMessage(`压缩失败：${e.message || '未知错误'}`, 'error');
-                        }
-                        
-                        const finalLen = newBytes.length || (newBytes.byteLength || 0);
-                        const saved = Math.max(0, origLen - finalLen);
-                        const pct = origLen > 0 ? Math.round((saved / origLen) * 100) : 0;
-                        compressionStats.push({ filename, origLen, finalLen, pct });
-                        if (isZipDownload) {
-                            exportedFiles.push({ filename, bytes: newBytes });
-                        } else {
-                            enqueueDownload(filename, newBytes);
-                        }
-                        pendingRecompress--;
-                        if (finalizeAfterRecompress && pendingRecompress === 0) {
-                            if (isZipDownload) {
-                                const blob = buildZip(exportedFiles);
-                                const a = document.createElement('a');
-                                const url = URL.createObjectURL(blob);
-                                a.href = url;
-                                a.download = 'export.zip';
-                                document.body.appendChild(a);
-                                a.click();
-                                document.body.removeChild(a);
-                                setTimeout(() => URL.revokeObjectURL(url), 1000);
-                                toggleExportButton(true);
-                                showToast('导出成功！');
-                            } else if (downloadQueue.length === 0) {
-                                toggleExportButton(true);
-                                showToast('导出成功！');
-                            }
-                            finalizeAfterRecompress = false;
-                        }
-                    })();
+                    enqueueCompressionTask({ filename, bytes, apiKey: storedApiKey });
                 } else {
                     const origLen = bytes.length || (bytes.byteLength || 0);
                     compressionStats.push({ filename, origLen, finalLen: origLen, pct: 0 });
