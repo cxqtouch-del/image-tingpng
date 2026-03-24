@@ -584,10 +584,10 @@ text-align: center;            padding: 16px 0 10px;
 
     <div class="section" id="compressionSection">
         <div class="control-group">
-            <label class="checkbox-row">
+            <label class="checkbox-row" id="zipDownloadRow">
                 <input type="checkbox" class="checkbox" id="zipDownloadCheckbox"> <span>打包下载</span>
             </label>
-            <label class="checkbox-row" style="display: flex; align-items: center;">
+            <label class="checkbox-row" id="cloudCompressRow" style="display: flex; align-items: center;">
                 <input type="checkbox" class="checkbox" id="cloudCompressCheckbox"> 
                 <span>TinyPNG</span>
                 <span id="infoIcon" class="info-icon" title="如何获取 API Key">
@@ -676,6 +676,7 @@ text-align: center;            padding: 16px 0 10px;
         const formatOptionsDiv = document.getElementById('formatOptions');
         const zipDownloadCheckbox = document.getElementById('zipDownloadCheckbox');
         const cloudCompressCheckbox = document.getElementById('cloudCompressCheckbox');
+        const cloudCompressRow = document.getElementById('cloudCompressRow');
         const manageKeyLink = document.getElementById('manageKeyLink');
         const compressionSection = document.getElementById('compressionSection');
         const exportButton = document.getElementById('exportButton');
@@ -714,7 +715,7 @@ text-align: center;            padding: 16px 0 10px;
                 infoStep3: '3. 去邮箱查收登录链接，进入后台控制台（Dashboard）。你将看到一串类似于 yX9kzS1m... 的字符，这就是你的 API Key。',
                 infoNote: '注意：免费账户每个月有 500 张图片的免费额度。',
                 saveSuccess: '保存成功',
-                activated: '激活成功！', notSet: '未设置', exportSuccess: '导出成功！',
+                activated: '激活成功', notSet: '未设置', exportSuccess: '导出成功',
                 compressingToast: '压缩导出中<br>请耐心等待', exportingToast: '导出中...',
                 maxExportToast: '最多可一次导出5个内容', zipTooltip: '由于文件较多<br>打包后一键下载',
                 compressFailed: '压缩失败', unknownError: '未知错误',
@@ -738,7 +739,7 @@ text-align: center;            padding: 16px 0 10px;
                 infoStep3: '3. Check your email for the login link, go to Dashboard. You will see a string like yX9kzS1m..., that is your API Key.',
                 infoNote: 'Note: Free accounts get 500 images per month.',
                 saveSuccess: 'Saved successfully',
-                activated: 'Activated!', notSet: 'Not set', exportSuccess: 'Export complete!',
+                activated: 'Activated!', notSet: 'Not set', exportSuccess: 'Export complete',
                 compressingToast: 'Compressing...<br>Please wait', exportingToast: 'Exporting...',
                 maxExportToast: 'Max 5 items per export', zipTooltip: 'Multiple files.<br>Package for one-click download',
                 compressFailed: 'Compression failed', unknownError: 'Unknown error',
@@ -1065,10 +1066,15 @@ text-align: center;            padding: 16px 0 10px;
         }
 
         function updateCompressionSectionVisibility() {
-            if (selectedFormat === 'JPG' || selectedFormat === 'PNG') {
-                compressionSection.style.display = 'block';
-            } else {
-                compressionSection.style.display = 'none';
+            // “打包下载”在所有格式下都展示；仅 TinyPNG 受格式限制（PNG/JPG）
+            compressionSection.style.display = 'block';
+
+            const canUseCloudCompress = selectedFormat === 'JPG' || selectedFormat === 'PNG';
+            if (cloudCompressRow) {
+                cloudCompressRow.style.display = canUseCloudCompress ? 'flex' : 'none';
+            }
+
+            if (!canUseCloudCompress) {
                 cloudCompressCheckbox.checked = false; // Uncheck if format changes
                 isCloudCompress = false;
             }
@@ -1181,7 +1187,7 @@ text-align: center;            padding: 16px 0 10px;
         }
 
         function isZipForceRequired() {
-            return selectedNodeIds.size > 1 || selectedScales.length > 1;
+            return selectedNodeIds.size > 1;
         }
 
         // 鼠标悬停提示：用于替代 toast（并且避开 disabled input 无事件的问题）
@@ -1421,8 +1427,8 @@ text-align: center;            padding: 16px 0 10px;
         function updateZipEnforcement() {
             const count = selectedNodeIds.size;
             if (!zipDownloadCheckbox) return;
-            // 多个图层 或 多个尺寸 时，强制打包下载
-            const shouldForceZip = count > 1 || selectedScales.length > 1;
+            // 仅当导出内容数量大于 1 时，强制打包下载
+            const shouldForceZip = count > 1;
             updatingZipEnforcement = true;
             zipDownloadCheckbox.checked = shouldForceZip;
             zipDownloadCheckbox.disabled = false; // 不禁用，便于用户点击时提示说明
@@ -1483,7 +1489,7 @@ text-align: center;            padding: 16px 0 10px;
             if (updatingZipEnforcement) return;
 
             const count = selectedNodeIds.size;
-            const shouldForceZip = count > 1 || selectedScales.length > 1;
+            const shouldForceZip = count > 1;
             if (shouldForceZip) {
                 // 必须打包下载：不允许用户更改，并提示原因
                 event.target.checked = true;
