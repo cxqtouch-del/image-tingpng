@@ -13,7 +13,7 @@ async function postSelectedNodesToUI() {
     try {
       thumbnailBytes = await node.exportAsync({
         format: 'PNG',
-        constraint: { type: 'WIDTH', value: 48 } // Generate a 48px width thumbnail
+        constraint: { type: 'WIDTH', value: 96 } // Generate a 96px width thumbnail for sharper UI preview
       });
     } catch (e) {
       console.error(`Could not generate thumbnail for node ${node.name}:`, e);
@@ -143,9 +143,7 @@ figma.ui.onmessage = async (msg) => {
 
     figma.ui.postMessage({ type: 'export-all-complete', total: exportCount });
   } else if (msg.type === 'resize') {
-    const minH = 400;
-    const maxH = 800;
-    const h = Math.max(minH, Math.min(maxH, Number(msg.height) || minH));
+    const h = Math.max(0, Math.ceil(Number(msg.height) || 0));
     figma.ui.resize(300, h);
   }
 };

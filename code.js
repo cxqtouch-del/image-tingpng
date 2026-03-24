@@ -21,7 +21,7 @@ function postSelectedNodesToUI() {
             try {
                 thumbnailBytes = yield node.exportAsync({
                     format: 'PNG',
-                    constraint: { type: 'WIDTH', value: 48 } // Generate a 48px width thumbnail
+                constraint: { type: 'WIDTH', value: 96 } // Generate a 96px width thumbnail for sharper UI preview
                 });
             }
             catch (e) {
@@ -140,9 +140,7 @@ figma.ui.onmessage = (msg) => __awaiter(void 0, void 0, void 0, function* () {
         figma.ui.postMessage({ type: 'export-all-complete', total: exportCount });
     }
     else if (msg.type === 'resize') {
-        const minH = 400;
-        const maxH = 800;
-        const h = Math.max(minH, Math.min(maxH, Number(msg.height) || minH));
+        const h = Math.max(0, Math.ceil(Number(msg.height) || 0));
         figma.ui.resize(300, h);
     }
 });

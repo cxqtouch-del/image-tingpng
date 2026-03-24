@@ -58,7 +58,6 @@
             padding: 0;
             margin: 0;
             width: 300px;
-            min-height: 400px;
             overflow: hidden;
             box-sizing: border-box;
            
@@ -69,7 +68,7 @@
             padding: 16px;
             display: flex;
             flex-direction: column;
-            gap: 24px; /* Increased gap between sections */
+            gap: 20px;
         }
         .section {
             background-color: transparent;
@@ -109,6 +108,33 @@
 
         #selectAllLayers {
             color: var(--blue);
+        }
+        #selectAllLayers.disabled {
+            color: var(--text-secondary);
+            cursor: default;
+            pointer-events: none;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .lang-switch-btn {
+            margin-left: 8px;
+            padding: 2px 4px;
+            font-size: 11px;
+            font-weight: 500;
+            color: var(--blue);
+            background: transparent;
+            border: 1px solid var(--border-grey);
+            border-radius: 6px;
+            cursor: pointer;
+            font-family: inherit;
+        }
+        .lang-switch-btn:hover {
+            border-color: var(--blue);
+            background: rgba(46, 59, 248, 0.06);
         }
         .layer-list {
             max-height: 400px;
@@ -226,6 +252,14 @@ text-align: center;            padding: 16px 0 10px;
             gap: 12px; /* Set gap to 12px */
             align-items: center;
         }
+        #compressionSection .control-group {
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        #compressionSection .checkbox-row {
+            margin-bottom: 0;
+            white-space: nowrap;
+        }
 
         .row {
             display: flex;
@@ -277,15 +311,15 @@ text-align: center;            padding: 16px 0 10px;
         }
 
         #exportButton {
-            margin-top: -10px;
+            margin-top: 4px;
         }
 
         .info-message {
             color: blue;
         }
         .scale-error-container {
-            margin-top: 2px;
-            min-height: 4px; /* 保证显示/隐藏不改变整体高度 */
+            margin-top: 0;
+            min-height: 0;
         }
         .scale-error-text {
             font-size: 13px;
@@ -487,12 +521,10 @@ text-align: center;            padding: 16px 0 10px;
     <div class="section">
         <div class="section-header">
             <span><span id="exportContentLabel">导出内容</span> (<span id="selectedLayerCount">0</span>)</span>
-            <div>
+            <div class="header-actions">
                 <a href="#" class="action-link" id="selectAllLayers">全选</a>
-                <span style="margin: 0 5px;">|</span>
                 <a href="#" class="action-link" id="clearAllLayers">清空</a>
-                <span style="margin: 0 5px;">|</span>
-                <a href="#" class="action-link" id="langSwitch">中/EN</a>
+                <button type="button" class="lang-switch-btn" id="langSwitch">中/EN</button>
             </div>
         </div>
         <div id="selectedLayersContainer" class="layer-list">
@@ -664,7 +696,9 @@ text-align: center;            padding: 16px 0 10px;
                 compressingToast: '压缩导出中<br>请耐心等待', exportingToast: '导出中...',
                 maxExportToast: '最多可一次导出5个内容', zipTooltip: '由于文件较多<br>打包后一键下载',
                 compressFailed: '压缩失败', unknownError: '未知错误',
-                enterValidKey: '请输入有效的 API Key'
+                tinypngNoReduce: '提示：TinyPNG 未能进一步压缩此图片', orig: '原', new: '新',
+                enterValidKey: '请输入有效的 API Key',
+                browserBlockHint: '提示：浏览器可能拦截多文件下载。若仅下载了一个文件，请在浏览器站点设置中允许"自动下载多个文件"，或使用"打包下载"。'
             },
             en: {
                 exportContent: 'Export', selectAll: 'Select all', clear: 'Clear', noSelection: 'Max 5 items per export',
@@ -681,24 +715,34 @@ text-align: center;            padding: 16px 0 10px;
                 compressingToast: 'Compressing...<br>Please wait', exportingToast: 'Exporting...',
                 maxExportToast: 'Max 5 items per export', zipTooltip: 'Multiple files.<br>Package for one-click download',
                 compressFailed: 'Compression failed', unknownError: 'Unknown error',
-                enterValidKey: 'Please enter a valid API Key'
+                tinypngNoReduce: 'TinyPNG could not reduce this image', orig: 'orig', new: 'new',
+                enterValidKey: 'Please enter a valid API Key',
+                browserBlockHint: 'Tip: Browser may block multiple downloads. If only one file downloaded, allow "Automatically download multiple files" in site settings, or use "Package download".'
             }
         };
-        let currentLang = (typeof localStorage !== 'undefined' && localStorage.getItem('plugin-lang')) || 'zh';
+        let currentLang = 'zh';
+        try {
+            if (typeof localStorage !== 'undefined') {
+                const saved = localStorage.getItem('plugin-lang');
+                if (saved === 'en' || saved === 'zh') currentLang = saved;
+            }
+        } catch (_) {}
         function t(key, params) {
             let s = (T[currentLang] && T[currentLang][key]) || T.zh[key] || key;
             if (params) for (const k in params) s = s.replace(`{{${k}}}`, params[k]);
             return s;
         }
         function applyLanguage() {
+            try {
             if (exportContentLabel) exportContentLabel.textContent = t('exportContent');
             if (selectAllLayersLink) selectAllLayersLink.textContent = t('selectAll');
             if (clearAllLayersLink) clearAllLayersLink.textContent = t('clear');
             if (noSelectionMessage) noSelectionMessage.textContent = t('noSelection');
-            const scaleLabel = document.querySelector('.section:nth-of-type(2) > label');
+            const container = document.querySelector('.container');
+            const scaleLabel = container ? container.querySelector('.section:nth-of-type(2) > label') : null;
             if (scaleLabel) scaleLabel.textContent = t('exportSize');
             if (scaleErrorText) scaleErrorText.textContent = t('selectSizeError');
-            const formatLabel = document.querySelector('.section:nth-of-type(3) > label');
+            const formatLabel = container ? container.querySelector('.section:nth-of-type(3) > label') : null;
             if (formatLabel) formatLabel.textContent = t('exportFormat');
             const zipSpan = zipDownloadCheckbox ? zipDownloadCheckbox.parentElement.querySelector('span') : null;
             if (zipSpan) zipSpan.textContent = t('packageDownload');
@@ -737,12 +781,14 @@ text-align: center;            padding: 16px 0 10px;
             if (langSwitch) langSwitch.textContent = '中/EN';
             updateExportButtonText();
             updateScaleError();
+            } catch (err) { console.error('[applyLanguage]', err); }
         }
         if (langSwitch) {
             langSwitch.addEventListener('click', (e) => {
                 e.preventDefault();
+                e.stopPropagation();
                 currentLang = currentLang === 'zh' ? 'en' : 'zh';
-                if (typeof localStorage !== 'undefined') localStorage.setItem('plugin-lang', currentLang);
+                try { if (typeof localStorage !== 'undefined') localStorage.setItem('plugin-lang', currentLang); } catch (_) {}
                 applyLanguage();
             });
         }
@@ -952,13 +998,19 @@ text-align: center;            padding: 16px 0 10px;
             messageElement.textContent = msg || '';
             messageElement.className = `${type === 'error' ? 'error-message' : 'info-message'}` + (msg ? '' : ' hidden');
         }
+        let resizeRafId = null;
         function requestResize() {
-            const BASE_HEIGHT = 400;
-            const count = selectedNodeIds.size;
-            const desired = count === 0
-                ? BASE_HEIGHT
-                : Math.max(BASE_HEIGHT, Math.min(document.body.scrollHeight, 800));
-            parent.postMessage({ pluginMessage: { type: 'resize', height: desired } }, '*');
+            if (resizeRafId !== null) {
+                cancelAnimationFrame(resizeRafId);
+            }
+            resizeRafId = requestAnimationFrame(() => {
+                resizeRafId = null;
+                const containerEl = document.querySelector('.container');
+                const desired = Math.ceil(
+                    containerEl ? containerEl.getBoundingClientRect().height : document.body.getBoundingClientRect().height
+                );
+                parent.postMessage({ pluginMessage: { type: 'resize', height: desired } }, '*');
+            });
         }
 
         function toggleExportButton(enable) {
@@ -1308,6 +1360,17 @@ text-align: center;            padding: 16px 0 10px;
             throw lastError || new Error('TinyPNG compression failed');
         }
         
+        function updateSelectAllState() {
+            if (selectAllLayersLink) {
+                const hasLayerItems = selectedLayersContainer && selectedLayersContainer.querySelectorAll('.layer-item').length > 0;
+                if (hasLayerItems) {
+                    selectAllLayersLink.classList.remove('disabled');
+                } else {
+                    selectAllLayersLink.classList.add('disabled');
+                }
+            }
+        }
+
         function updateZipEnforcement() {
             const count = selectedNodeIds.size;
             if (!zipDownloadCheckbox) return;
@@ -1556,6 +1619,7 @@ text-align: center;            padding: 16px 0 10px;
         // Select All Layers
         selectAllLayersLink.addEventListener('click', (event) => {
             event.preventDefault();
+            if (selectAllLayersLink.classList.contains('disabled')) return;
             selectedNodeIds.clear();
             selectedNodeIdsOrder = [];
             selectedLayersContainer.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
@@ -1583,6 +1647,7 @@ text-align: center;            padding: 16px 0 10px;
             selectedLayerCountSpan.textContent = 0;
             updateExportButtonText();
             updateZipEnforcement();
+            updateSelectAllState();
             requestResize();
         });
 
@@ -1652,6 +1717,7 @@ text-align: center;            padding: 16px 0 10px;
                     selectedLayerCountSpan.textContent = 0;
                     updateExportButtonText();
                     updateZipEnforcement();
+                    updateSelectAllState();
                     toggleExportButton(true);
                     requestResize();
                     return;
@@ -1751,6 +1817,7 @@ text-align: center;            padding: 16px 0 10px;
                 selectedLayerCountSpan.textContent = selectedNodeIds.size;
                 updateExportButtonText();
                 updateZipEnforcement();
+                updateSelectAllState();
                 toggleExportButton(true);
                 requestResize();
             } else if (pluginMessage.type === 'export-complete-data') {
@@ -1802,6 +1869,7 @@ text-align: center;            padding: 16px 0 10px;
         updateCompressionSectionVisibility();
         updateExportButtonText();
         updateZipEnforcement();
+        updateSelectAllState();
         requestResize();
 
         // Notify plugin that UI is ready
