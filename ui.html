@@ -1009,20 +1009,6 @@ text-align: center;            padding: 16px 0 10px;
         let tinyPngReduced = 0; // 服务返回且“确实变小”的图片数
 
         function finalizeAfterTinyPNG() {
-            if (tinyPngTried > 0) {
-                if (tinyPngFailed > 0) {
-                    showMessage(
-                        `TinyPNG 压缩失败：${tinyPngFailed}/${tinyPngTried} 张；有效压缩（变小）${tinyPngReduced}/${tinyPngTried} 张。`,
-                        'error'
-                    );
-                } else {
-                    showMessage(
-                        `TinyPNG 压缩完成：有效压缩（变小）${tinyPngReduced}/${tinyPngTried} 张。`,
-                        'info'
-                    );
-                }
-            }
-
             if (isZipDownload) {
                 const blob = buildZip(exportedFiles);
                 const a = document.createElement('a');
