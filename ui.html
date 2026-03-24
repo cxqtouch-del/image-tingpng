@@ -406,6 +406,9 @@ text-align: center;            padding: 16px 0 10px;
         }
         .modal-footer > button {
             flex: 1;
+            transition: none !important;
+            animation: none !important;
+            transform: none !important;
         }
 
         /* Input Wrapper for Toggle Icon */
@@ -588,10 +591,10 @@ text-align: center;            padding: 16px 0 10px;
     <div class="modal-content">
         <div class="modal-header">设置 TinyPNG API Key</div>
         <div class="modal-body">
-            <p>Key 将保存在本机，每月免费 500 次。</p>
             <div id="currentKeyContainer" style="margin-bottom: 8px; font-size: 12px; color: var(--text-secondary);">
                 当前 Key: <span id="currentKeyText" style="color: var(--text-primary); font-family: monospace;"></span>
             </div>
+                <p>Key 将保存在本机，每月免费 500 次。</p>
             <div id="compressionCountContainer" style="margin-bottom: 8px; font-size: 12px; color: var(--text-secondary);">
                 已使用 <span id="compressionCountNum">--</span> / 500 次
             </div>
@@ -692,6 +695,7 @@ text-align: center;            padding: 16px 0 10px;
                 infoStep1: '1. 访问 <a href="https://tinypng.com/" target="_blank" style="color: var(--blue); text-decoration: none;">tinypng.com</a> 官网。', infoStep2: '2. 输入你的名字和邮箱。',
                 infoStep3: '3. 去邮箱查收登录链接，进入后台控制台（Dashboard）。你将看到一串类似于 yX9kzS1m... 的字符，这就是你的 API Key。',
                 infoNote: '注意：免费账户每个月有 500 张图片的免费额度。',
+                saveSuccess: '保存成功',
                 activated: '激活成功！', notSet: '未设置', exportSuccess: '导出成功！',
                 compressingToast: '压缩导出中<br>请耐心等待', exportingToast: '导出中...',
                 maxExportToast: '最多可一次导出5个内容', zipTooltip: '由于文件较多<br>打包后一键下载',
@@ -711,6 +715,7 @@ text-align: center;            padding: 16px 0 10px;
                 infoStep1: '1. Visit <a href="https://tinypng.com/" target="_blank" style="color: var(--blue); text-decoration: none;">tinypng.com</a>', infoStep2: '2. Enter your name and email.',
                 infoStep3: '3. Check your email for the login link, go to Dashboard. You will see a string like yX9kzS1m..., that is your API Key.',
                 infoNote: 'Note: Free accounts get 500 images per month.',
+                saveSuccess: 'Saved successfully',
                 activated: 'Activated!', notSet: 'Not set', exportSuccess: 'Export complete!',
                 compressingToast: 'Compressing...<br>Please wait', exportingToast: 'Exporting...',
                 maxExportToast: 'Max 5 items per export', zipTooltip: 'Multiple files.<br>Package for one-click download',
@@ -781,6 +786,9 @@ text-align: center;            padding: 16px 0 10px;
             if (langSwitch) langSwitch.textContent = '中/EN';
             updateExportButtonText();
             updateScaleError();
+            requestResize();
+            // 英文文案可能触发换行，下一帧再测一次确保高度收缩/扩展都准确
+            requestAnimationFrame(() => requestResize());
             } catch (err) { console.error('[applyLanguage]', err); }
         }
         if (langSwitch) {
@@ -1425,6 +1433,9 @@ text-align: center;            padding: 16px 0 10px;
                 button.classList.add('active');
                 updateCompressionSectionVisibility();
                 updateExportButtonText();
+                requestResize();
+                // 切换 SVG / PNG / JPG 会触发布局重排，下一帧再测一次避免高度残留
+                requestAnimationFrame(() => requestResize());
             }
         });
 
@@ -1555,7 +1566,7 @@ text-align: center;            padding: 16px 0 10px;
                 currentKeyText.textContent = key; // Update display
                 parent.postMessage({ pluginMessage: { type: 'save-api-key', apiKey: key } }, '*');
                 apiKeyModal.style.display = 'none';
-                showToast(); // Show success toast
+                showToast(t('saveSuccess'));
                 
                 // If cloud compress was unchecked, check it now
                 if (!cloudCompressCheckbox.checked) {
