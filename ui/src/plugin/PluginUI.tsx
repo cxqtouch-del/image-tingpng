@@ -99,7 +99,7 @@ const T = {
     keyVerifyNetworkError: "网络异常，暂时无法校验 Key",
     browserBlockHint:
       '提示：浏览器可能拦截多文件下载。若仅下载了一个文件，请在浏览器站点设置中允许"自动下载多个文件"，或使用"打包下载"。',
-    enterTinypngKeyToast: "请输入「TingPng」key",
+    enterTinypngKeyToast: "请输入「TinyPNG」key",
   },
   en: {
     exportContent: "Export",
@@ -151,7 +151,7 @@ const T = {
     keyVerifyNetworkError: "Network error. Unable to verify key right now.",
     browserBlockHint:
       'Tip: Browser may block multiple downloads. If only one file downloaded, allow "Automatically download multiple files" in site settings, or use "Package download".',
-    enterTinypngKeyToast: "Please enter TingPng key",
+    enterTinypngKeyToast: "Please enter TinyPNG key",
   },
 } as const
 
@@ -411,7 +411,7 @@ export default function PluginUI() {
 
     session.downloading = true
     const { filename, bytes } = session.downloadQueue.shift()!
-    const blob = new Blob([bytes.buffer as any], { type: "application/octet-stream" })
+    const blob = new Blob([bytes.buffer as ArrayBuffer], { type: "application/octet-stream" })
     const a = document.createElement("a")
     const url = URL.createObjectURL(blob)
     a.href = url
@@ -687,6 +687,7 @@ export default function PluginUI() {
     } else if (pluginMessage.type === "export-all-complete") {
       handleExportAllComplete()
     } else if (pluginMessage.type === "error") {
+      if (exportSessionRef.current) exportSessionRef.current.cancelled = true
       hideToast()
       showMessage(pluginMessage.message, "error")
       setExportInProgress(false)
@@ -935,7 +936,7 @@ export default function PluginUI() {
                 <div key={node.id} className="flex items-center gap-2 p-2 bg-muted rounded-lg">
                   <Checkbox
                     checked={checked}
-                    onCheckedChange={(v) => onToggleLayer(node.id, v === true)}
+                    onCheckedChange={(v: boolean | "indeterminate") => onToggleLayer(node.id, v === true)}
                   />
                   <div className="w-12 h-12 rounded-[6px] bg-[#e0e0e0] overflow-hidden">
                     {thumbUrl ? (
@@ -961,7 +962,7 @@ export default function PluginUI() {
                 <label key={s} className="flex items-center gap-[6px] text-[13px] text-[#222]">
                   <Checkbox
                     checked={selectedScales.includes(s)}
-                    onCheckedChange={(v) => toggleScale(s, v === true)}
+                    onCheckedChange={(v: boolean | "indeterminate") => toggleScale(s, v === true)}
                   />
                   <span className="text-[13px]">{s}x</span>
                 </label>
@@ -1005,7 +1006,7 @@ export default function PluginUI() {
                     <Checkbox
                       checked={isZipDownload}
                       disabled={isZipForced}
-                      onCheckedChange={(v) => {
+                      onCheckedChange={(v: boolean | "indeterminate") => {
                         if (isZipForced && v !== true) return
                         setIsZipDownload(v === true)
                       }}
@@ -1030,7 +1031,7 @@ export default function PluginUI() {
                   <div className="flex items-center gap-2">
                     <Checkbox
                       checked={isCloudCompress}
-                      onCheckedChange={(v) => {
+                      onCheckedChange={(v: boolean | "indeterminate") => {
                         if (v === true) {
                           if (!hasShownInfoModal) {
                             // 第一次勾选先弹说明弹窗，关掉后再启用

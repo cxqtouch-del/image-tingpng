@@ -124,7 +124,6 @@ figma.ui.onmessage = async (msg) => {
     }
 
     let exportCount = 0;
-    const exportJobs = [];
 
     for (const node of nodesToExport) {
       for (const scale of scales) {
