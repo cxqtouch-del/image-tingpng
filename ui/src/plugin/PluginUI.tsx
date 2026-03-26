@@ -995,7 +995,7 @@ export default function PluginUI() {
           <DialogHeader>
             <DialogTitle>{t(currentLang, "modalTitle")}</DialogTitle>
           </DialogHeader>
-          <div className="text-[12px] text-muted-foreground leading-5 mb-3">
+          <div className="text-[13px] text-muted-foreground leading-5 mb-3">
             <div id="currentKeyContainer" className="mb-2">
               {t(currentLang, "currentKey")}{" "}
               <span style={{ color: "#222", fontFamily: "monospace" }}>
@@ -1018,7 +1018,7 @@ export default function PluginUI() {
                   }}
                   placeholder={t(currentLang, "enterKeyPlaceholder")}
                   className={cn(
-                    "pr-10 rounded-md",
+                    "pr-10 rounded-md text-[13px]",
                     modalKeyError && "border-[#ff4d4f]"
                   )}
                 />
@@ -1043,7 +1043,7 @@ export default function PluginUI() {
                 </button>
               </div>
               {modalKeyError ? (
-                <div className="mt-2 text-[12px] text-[#ff4d4f]">{modalKeyError}</div>
+                <div className="mt-2 text-[13px] text-[#ff4d4f]">{modalKeyError}</div>
               ) : null}
             </div>
           </div>
@@ -1051,14 +1051,14 @@ export default function PluginUI() {
             <Button
               variant="outline"
               onClick={() => setApiKeyModalOpen(false)}
-              className="flex-1 h-[36px] rounded-md"
+              className="flex-1 h-[36px] rounded-md text-[13px]"
             >
               {t(currentLang, "cancel")}
             </Button>
             <Button
               onClick={handleSaveKey}
               disabled={isSavingKey}
-              className="flex-1 h-[36px] rounded-md bg-[#2E3BF8] hover:bg-[#2530c9]"
+              className="flex-1 h-[36px] rounded-md text-[13px] bg-[#2E3BF8] hover:bg-[#2530c9]"
             >
               {isSavingKey ? "..." : t(currentLang, "save")}
             </Button>
@@ -1073,12 +1073,12 @@ export default function PluginUI() {
           <DialogHeader>
             <DialogTitle>{t(currentLang, "cannotExport")}</DialogTitle>
           </DialogHeader>
-          <div className="text-[12px] text-muted-foreground leading-6 mb-3">
+          <div className="text-[13px] text-muted-foreground leading-6 mb-3">
             {t(currentLang, "keyLimitReached")}
           </div>
           <DialogFooter>
             <Button
-              className="w-full bg-[#2E3BF8] hover:bg-[#2530c9] rounded-md"
+              className="w-full text-[13px] bg-[#2E3BF8] hover:bg-[#2530c9] rounded-md"
               onClick={() => setKeyLimitModalOpen(false)}
             >
               {t(currentLang, "gotIt")}
@@ -1117,7 +1117,7 @@ export default function PluginUI() {
           <DialogHeader>
             <DialogTitle>{t(currentLang, "howToGetKey")}</DialogTitle>
           </DialogHeader>
-          <div className="text-[12px] text-muted-foreground leading-6 mb-3">
+          <div className="text-[13px] text-muted-foreground leading-6 mb-3">
             <p dangerouslySetInnerHTML={{ __html: t(currentLang, "infoStep1") as string }} />
             <p>{t(currentLang, "infoStep2")}</p>
             <p>{t(currentLang, "infoStep3")}</p>
@@ -1125,7 +1125,7 @@ export default function PluginUI() {
           </div>
           <DialogFooter>
             <Button
-              className="w-full bg-[#2E3BF8] hover:bg-[#2530c9] rounded-md"
+              className="w-full text-[13px] bg-[#2E3BF8] hover:bg-[#2530c9] rounded-md"
               onClick={() => {
                 setInfoModalOpen(false)
               }}
