@@ -1036,7 +1036,7 @@ export default function PluginUI() {
                   }}
                   placeholder={t(currentLang, "enterKeyPlaceholder")}
                   className={cn(
-                    "pr-10 rounded-md text-[14px] h-8 py-1",
+                    "pr-10 rounded-md text-[13px] h-8 py-1",
                     modalKeyError && "border-[#ff4d4f] focus:border-[#ff4d4f]"
                   )}
                 />
