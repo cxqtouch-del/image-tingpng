@@ -183,6 +183,9 @@ export default function PluginUI() {
   const [isSavingKey, setIsSavingKey] = React.useState(false)
   const [isPassword, setIsPassword] = React.useState(true)
 
+  const apiKeyModalTitleRef = React.useRef<HTMLHeadingElement>(null)
+  const modalKeyInputRef = React.useRef<HTMLInputElement>(null)
+
   // Bottom message/toast
   const [toastHtml, setToastHtml] = React.useState<string>("")
   const [toastVisible, setToastVisible] = React.useState(false)
@@ -687,6 +690,25 @@ export default function PluginUI() {
     setApiKeyModalOpen(true)
   }, [storedApiKey])
 
+  /** 弹窗打开后避免焦点落在输入框（Radix 焦点陷阱会拉回第一个 tabbable）；将焦点放在标题上 */
+  React.useEffect(() => {
+    if (!apiKeyModalOpen) return
+    const moveFocusOffInput = () => {
+      const input = modalKeyInputRef.current
+      if (input && document.activeElement === input) {
+        input.blur()
+      }
+      apiKeyModalTitleRef.current?.focus({ preventScroll: true })
+    }
+    queueMicrotask(moveFocusOffInput)
+    const t0 = window.setTimeout(moveFocusOffInput, 0)
+    const t1 = window.setTimeout(moveFocusOffInput, 50)
+    return () => {
+      clearTimeout(t0)
+      clearTimeout(t1)
+    }
+  }, [apiKeyModalOpen])
+
   const handleSaveKey = React.useCallback(async () => {
     if (isSavingKey) return
     const key = modalKeyValue.trim()
@@ -975,10 +997,21 @@ export default function PluginUI() {
       <Dialog open={apiKeyModalOpen} onOpenChange={setApiKeyModalOpen}>
         <DialogContent
           className="w-[260px] p-4 rounded-2xl"
-          onOpenAutoFocus={(e) => e.preventDefault()}
+          onOpenAutoFocus={(e) => {
+            e.preventDefault()
+            queueMicrotask(() => {
+              apiKeyModalTitleRef.current?.focus({ preventScroll: true })
+            })
+          }}
         >
           <DialogHeader>
-            <DialogTitle>{t(currentLang, "modalTitle")}</DialogTitle>
+            <DialogTitle
+              ref={apiKeyModalTitleRef}
+              tabIndex={-1}
+              className="outline-none focus:outline-none focus:ring-0"
+            >
+              {t(currentLang, "modalTitle")}
+            </DialogTitle>
           </DialogHeader>
           <div className="text-[13px] text-muted-foreground leading-5 mb-3">
             <div id="currentKeyContainer" className="mb-2">
@@ -993,8 +1026,10 @@ export default function PluginUI() {
             <div className="mt-3">
               <div className="relative">
                 <Input
+                  ref={modalKeyInputRef}
                   id="modalKeyInput"
                   type={isPassword ? "password" : "text"}
+                  autoComplete="off"
                   value={modalKeyValue}
                   onChange={(e) => {
                     setModalKeyValue(e.target.value)
