@@ -811,7 +811,7 @@ export default function PluginUI() {
                     localStorage.setItem("plugin-lang", next)
                   } catch {}
                 }}
-                className="h-auto px-2 py-1 text-[11px] border border-[#e0e0e0] rounded-md"
+                className="h-auto px-2 py-1 text-[11px] border border-[#e0e0e0] rounded-[8px]"
               >
                 中/EN
               </Button>
