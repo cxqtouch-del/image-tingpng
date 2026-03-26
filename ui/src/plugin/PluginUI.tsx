@@ -897,75 +897,76 @@ export default function PluginUI() {
             </Tabs>
           </div>
 
-          <div className="flex flex-col gap-2">
-            <div className="flex items-center justify-between">
-              <label className="flex items-center gap-2 text-[13px] text-[#222]">
-                <Checkbox checked={isZipDownload} onCheckedChange={(v) => setIsZipDownload(v === true)} />
-                <span>{t(currentLang, "packageDownload")}</span>
-              </label>
-            </div>
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center justify-between">
+                <label className="flex items-center gap-2 text-[13px] text-[#222]">
+                  <Checkbox checked={isZipDownload} onCheckedChange={(v) => setIsZipDownload(v === true)} />
+                  <span>{t(currentLang, "packageDownload")}</span>
+                </label>
+              </div>
 
-            {canUseCloudCompress ? (
-              <label className="flex items-center text-[13px] text-[#222]">
-                <div className="flex items-center gap-2">
-                  <Checkbox
-                    checked={isCloudCompress}
-                    onCheckedChange={(v) => {
-                      if (v === true) {
-                        if (!storedApiKey) {
-                          if (!hasShownInfoModal) {
-                            setPendingAction("toggleCheckbox")
-                            setInfoModalOpen(true)
+              {canUseCloudCompress ? (
+                <label className="flex items-center text-[13px] text-[#222]">
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      checked={isCloudCompress}
+                      onCheckedChange={(v) => {
+                        if (v === true) {
+                          if (!storedApiKey) {
+                            if (!hasShownInfoModal) {
+                              setPendingAction("toggleCheckbox")
+                              setInfoModalOpen(true)
+                              return
+                            }
+                            openManageKeyModal()
                             return
                           }
-                          openManageKeyModal()
+                          setIsCloudCompress(true)
                           return
                         }
-                        setIsCloudCompress(true)
+                        setIsCloudCompress(false)
+                      }}
+                    />
+                    <span>TinyPNG</span>
+                  </div>
+                  <button
+                    type="button"
+                    className="inline-flex items-center justify-center p-0.5 ml-1 shrink-0"
+                    onClick={() => setInfoModalOpen(true)}
+                    aria-label={currentLang === "zh" ? "说明" : "Info"}
+                  >
+                    <PluginInfoIcon size={16} />
+                  </button>
+                  <button
+                    type="button"
+                    className="ml-3 shrink-0 text-[#2E3BF8]"
+                    onClick={() => {
+                      if (!hasShownInfoModal) {
+                        setPendingAction("openManageKey")
+                        setInfoModalOpen(true)
                         return
                       }
-                      setIsCloudCompress(false)
+                      openManageKeyModal()
                     }}
-                  />
-                  <span>TinyPNG</span>
-                </div>
-                <button
-                  type="button"
-                  className="inline-flex items-center justify-center p-0.5 ml-1 shrink-0"
-                  onClick={() => setInfoModalOpen(true)}
-                  aria-label={currentLang === "zh" ? "说明" : "Info"}
-                >
-                  <PluginInfoIcon size={16} />
-                </button>
-                <button
-                  type="button"
-                  className="ml-3 shrink-0 text-[#2E3BF8]"
-                  onClick={() => {
-                    if (!hasShownInfoModal) {
-                      setPendingAction("openManageKey")
-                      setInfoModalOpen(true)
-                      return
-                    }
-                    openManageKeyModal()
-                  }}
-                >
-                  {t(currentLang, "manageKey")}
-                </button>
-              </label>
-            ) : null}
-          </div>
+                  >
+                    {t(currentLang, "manageKey")}
+                  </button>
+                </label>
+              ) : null}
+            </div>
 
-          <Button
-            id="exportButton"
-            onClick={handleExportClick}
-            disabled={exportDisabled || exportInProgress}
-            // Keep shadcn button theme styles; only control size/layout here
-            className="w-full h-[44px] rounded-md text-[14px] font-medium"
-          >
-            {selectedLayerCount === 0
-              ? t(currentLang, "exportBtn")
-              : t(currentLang, "exportBtnCount", { n: selectedLayerCount })}
-          </Button>
+            <Button
+              id="exportButton"
+              onClick={handleExportClick}
+              disabled={exportDisabled || exportInProgress}
+              className="w-full h-[44px] rounded-md text-[14px] font-medium"
+            >
+              {selectedLayerCount === 0
+                ? t(currentLang, "exportBtn")
+                : t(currentLang, "exportBtnCount", { n: selectedLayerCount })}
+            </Button>
+          </div>
         </div>
 
         <p
