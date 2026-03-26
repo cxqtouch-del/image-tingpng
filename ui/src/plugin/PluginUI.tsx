@@ -989,7 +989,10 @@ export default function PluginUI() {
       {/* API Key Modal */}
       <Dialog open={apiKeyModalOpen} onOpenChange={setApiKeyModalOpen}>
         <DialogOverlay />
-        <DialogContent className="w-[260px] p-4 rounded-2xl">
+        <DialogContent
+          className="w-[260px] p-4 rounded-2xl"
+          onOpenAutoFocus={(e) => e.preventDefault()}
+        >
           <DialogHeader>
             <DialogTitle>{t(currentLang, "modalTitle")}</DialogTitle>
           </DialogHeader>
@@ -1016,7 +1019,7 @@ export default function PluginUI() {
                   placeholder={t(currentLang, "enterKeyPlaceholder")}
                   className={cn(
                     "pr-10 rounded-md text-[13px]",
-                    modalKeyError && "border-[#ff4d4f]"
+                    modalKeyError && "border-[#ff4d4f] focus:border-[#ff4d4f]"
                   )}
                 />
                 <button
