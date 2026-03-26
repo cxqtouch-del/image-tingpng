@@ -1057,9 +1057,15 @@ export default function PluginUI() {
                   {isPassword ? <PluginEyeOffIcon size={16} /> : <PluginEyeIcon size={16} />}
                 </button>
               </div>
-              {modalKeyError ? (
-                <div className="mt-2 text-[13px] text-[#ff4d4f]">{modalKeyError}</div>
-              ) : null}
+              <div
+                className={cn(
+                  "mt-2 h-[18px] text-[13px] leading-[18px]",
+                  modalKeyError ? "text-[#ff4d4f]" : "text-transparent"
+                )}
+                aria-live="polite"
+              >
+                {modalKeyError || "."}
+              </div>
             </div>
           </div>
           <DialogFooter className="gap-3">
