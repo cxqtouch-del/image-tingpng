@@ -779,24 +779,26 @@ export default function PluginUI() {
             <span>{t(currentLang, "exportContent")}</span> ({selectedLayerCount})
           </div>
           <div className="flex items-center gap-8">
-            <button
-              id="selectAllLayers"
-              onClick={handleSelectAll}
-              disabled={selectAllDisabled}
-              className={cn(
-                "text-[13px] font-normal text-[#2E3BF8] select-none",
-                selectAllDisabled && "text-[#888] cursor-default pointer-events-none"
-              )}
-            >
-              {t(currentLang, "selectAll")}
-            </button>
-            <button
-              id="clearAllLayers"
-              onClick={handleClearAll}
-              className="text-[13px] font-normal text-[#ff4d4f] select-none"
-            >
-              {t(currentLang, "clear")}
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                id="selectAllLayers"
+                onClick={handleSelectAll}
+                disabled={selectAllDisabled}
+                className={cn(
+                  "text-[13px] font-normal text-[#2E3BF8] select-none",
+                  selectAllDisabled && "text-[#888] cursor-default pointer-events-none"
+                )}
+              >
+                {t(currentLang, "selectAll")}
+              </button>
+              <button
+                id="clearAllLayers"
+                onClick={handleClearAll}
+                className="text-[13px] font-normal text-[#ff4d4f] select-none"
+              >
+                {t(currentLang, "clear")}
+              </button>
+            </div>
             <Button
               variant="outline"
               size="sm"
