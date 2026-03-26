@@ -846,19 +846,21 @@ export default function PluginUI() {
 
         <div className="flex flex-col gap-2">
           <div className="text-[13px] font-medium text-[#222]">{t(currentLang, "exportSize")}</div>
-          <div id="scaleOptions" className="flex gap-3">
-            {[1, 2, 3, 4].map((s) => (
-              <label key={s} className="flex items-center gap-2 text-[13px] text-[#222]">
-                <Checkbox
-                  checked={selectedScales.includes(s)}
-                  onCheckedChange={(v) => toggleScale(s, v === true)}
-                />
-                <span className="text-[13px]">{s}x</span>
-              </label>
-            ))}
-          </div>
-          <div className={cn("text-[13px] text-[#ff4d4f] h-2", selectedNodeIds.size > 0 && selectedScales.length === 0 && "mt-2")}>
-            {selectedNodeIds.size > 0 && selectedScales.length === 0 ? t(currentLang, "selectSizeError") : ""}
+          <div className="flex flex-col gap-1">
+            <div id="scaleOptions" className="flex gap-3">
+              {[1, 2, 3, 4].map((s) => (
+                <label key={s} className="flex items-center gap-2 text-[13px] text-[#222]">
+                  <Checkbox
+                    checked={selectedScales.includes(s)}
+                    onCheckedChange={(v) => toggleScale(s, v === true)}
+                  />
+                  <span className="text-[13px]">{s}x</span>
+                </label>
+              ))}
+            </div>
+            <div className="text-[13px] leading-tight text-[#ff4d4f]">
+              {selectedNodeIds.size > 0 && selectedScales.length === 0 ? t(currentLang, "selectSizeError") : ""}
+            </div>
           </div>
         </div>
 
