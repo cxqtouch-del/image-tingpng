@@ -929,9 +929,8 @@ export default function PluginUI() {
                             if (!hasShownInfoModal) {
                               setPendingAction("toggleCheckbox")
                               setInfoModalOpen(true)
-                              return
                             }
-                            openManageKeyModal()
+                            // 没有 key 时不自动弹管理 key，保持未勾选，等用户主动点"管理 Key"
                             return
                           }
                           setIsCloudCompress(true)
