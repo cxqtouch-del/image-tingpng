@@ -9,6 +9,23 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 figma.showUI(__html__, { width: 300, height: 400 });
+const EXPORT_CHUNK_SIZE = 64 * 1024;
+function postExportFileInChunks(fileId, filename, bytes) {
+    const totalChunks = Math.max(1, Math.ceil(bytes.length / EXPORT_CHUNK_SIZE));
+    for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
+        const start = chunkIndex * EXPORT_CHUNK_SIZE;
+        const end = Math.min(start + EXPORT_CHUNK_SIZE, bytes.length);
+        const chunkBytes = bytes.slice(start, end);
+        figma.ui.postMessage({
+            type: 'export-file-chunk',
+            fileId,
+            filename,
+            chunkIndex,
+            totalChunks,
+            bytes: Array.from(chunkBytes),
+        });
+    }
+}
 // Function to send selected nodes to the UI
 function postSelectedNodesToUI() {
     return __awaiter(this, void 0, void 0, function* () {
@@ -92,9 +109,15 @@ figma.ui.onmessage = (msg) => __awaiter(void 0, void 0, void 0, function* () {
             figma.ui.postMessage({ type: 'error', message: '没有选择任何导出尺寸。' });
             return;
         }
-        const nodesToExport = nodeIds
-            .map((id) => figma.getNodeById(id))
-            .filter(Boolean);
+        const resolvedNodes = yield Promise.all(nodeIds.map((id) => __awaiter(void 0, void 0, void 0, function* () {
+            try {
+                return yield figma.getNodeByIdAsync(id);
+            }
+            catch (_a) {
+                return null;
+            }
+        })));
+        const nodesToExport = resolvedNodes.filter(Boolean);
         if (nodesToExport.length === 0) {
             figma.ui.postMessage({ type: 'error', message: '选中的图层在Figma中不存在或已取消选择。' });
             return;
@@ -125,12 +148,9 @@ figma.ui.onmessage = (msg) => __awaiter(void 0, void 0, void 0, function* () {
                         continue;
                     }
                     const imageBytes = yield node.exportAsync(options);
-                    // 直接传 Uint8Array，避免 Array.from 超大图时序列化卡死；UI 端已兼容两种格式
-                    figma.ui.postMessage({
-                        type: 'export-complete-data',
-                        filename: `${node.name}@${scale}x.${format.toLowerCase()}`,
-                        bytes: imageBytes,
-                    });
+                    const filename = `${node.name}@${scale}x.${format.toLowerCase()}`;
+                    const fileId = `${node.id}:${scale}:${format}`;
+                    postExportFileInChunks(fileId, filename, imageBytes);
                     exportCount++;
                 }
                 catch (error) {

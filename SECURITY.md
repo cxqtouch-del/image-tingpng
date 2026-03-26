@@ -6,7 +6,7 @@ If you believe you have found a security vulnerability in this Figma plugin or i
 
 **How to report**
 
-- Email: **your-email@example.com** (replace with your real contact before publishing)
+- Email: **cxqtouch@gmail.com** (replace with your real contact before publishing)
 - Include: short description, steps to reproduce, affected component (plugin UI / main thread / Worker), and severity if known.
 - Do not open a public issue for undisclosed vulnerabilities.
 
@@ -27,4 +27,3 @@ If you believe you have found a security vulnerability in this Figma plugin or i
 
 若你发现本插件或自建 **Cloudflare Worker（TinyPNG 请求代理）** 存在安全问题，请通过上方邮箱**私下**报告，勿在公开 Issue 中披露未修复漏洞。我们会在合理时间内确认并跟进修复。
 
-请将 `your-email@example.com` 替换为你的真实联系邮箱后再对外公开本仓库或提交社区审核。

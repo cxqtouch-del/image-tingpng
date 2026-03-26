@@ -1,5 +1,26 @@
 figma.showUI(__html__, { width: 300, height: 400 });
 
+const EXPORT_CHUNK_SIZE = 64 * 1024;
+
+function postExportFileInChunks(fileId: string, filename: string, bytes: Uint8Array) {
+  const totalChunks = Math.max(1, Math.ceil(bytes.length / EXPORT_CHUNK_SIZE));
+
+  for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
+    const start = chunkIndex * EXPORT_CHUNK_SIZE;
+    const end = Math.min(start + EXPORT_CHUNK_SIZE, bytes.length);
+    const chunkBytes = bytes.slice(start, end);
+
+    figma.ui.postMessage({
+      type: 'export-file-chunk',
+      fileId,
+      filename,
+      chunkIndex,
+      totalChunks,
+      bytes: Array.from(chunkBytes),
+    });
+  }
+}
+
 // Function to send selected nodes to the UI
 async function postSelectedNodesToUI() {
   const MAX_NODES_FOR_UI = 5;
@@ -85,9 +106,17 @@ figma.ui.onmessage = async (msg) => {
       return;
     }
 
-    const nodesToExport = (nodeIds as string[])
-      .map((id: string) => figma.getNodeById(id))
-      .filter(Boolean) as SceneNode[];
+    const resolvedNodes = await Promise.all(
+      (nodeIds as string[]).map(async (id: string) => {
+        try {
+          return await figma.getNodeByIdAsync(id);
+        } catch {
+          return null;
+        }
+      })
+    );
+
+    const nodesToExport = resolvedNodes.filter(Boolean) as SceneNode[];
 
     if (nodesToExport.length === 0) {
       figma.ui.postMessage({ type: 'error', message: '选中的图层在Figma中不存在或已取消选择。' });
@@ -128,11 +157,9 @@ figma.ui.onmessage = async (msg) => {
           }
 
           const imageBytes = await node.exportAsync(options);
-          figma.ui.postMessage({
-            type: 'export-complete-data',
-            filename: `${node.name}@${scale}x.${format.toLowerCase()}`,
-            bytes: Array.from(imageBytes) // Convert back to Array for message passing
-          });
+          const filename = `${node.name}@${scale}x.${format.toLowerCase()}`;
+          const fileId = `${node.id}:${scale}:${format}`;
+          postExportFileInChunks(fileId, filename, imageBytes);
           exportCount++;
 
         } catch (error: any) {
