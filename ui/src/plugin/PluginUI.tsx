@@ -779,7 +779,7 @@ export default function PluginUI() {
             <span>{t(currentLang, "exportContent")}</span> ({selectedLayerCount})
           </div>
           <div className="flex items-center gap-8">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-4">
               <button
                 id="selectAllLayers"
                 onClick={handleSelectAll}
