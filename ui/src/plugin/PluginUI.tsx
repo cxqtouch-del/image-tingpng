@@ -977,7 +977,7 @@ export default function PluginUI() {
 
       {toastVisible ? (
         <div
-          className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-black/80 text-white px-6 py-3 rounded-md text-[14px] z-[2000] pointer-events-none whitespace-pre-wrap"
+          className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-black/80 text-white px-6 py-3 rounded-md text-[14px] z-[2000] pointer-events-none whitespace-nowrap text-center max-w-[min(100%,90vw)]"
           dangerouslySetInnerHTML={{ __html: toastHtml }}
         />
       ) : null}
