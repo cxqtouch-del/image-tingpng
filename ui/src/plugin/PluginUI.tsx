@@ -932,7 +932,7 @@ export default function PluginUI() {
                   </div>
                   <button
                     type="button"
-                    className="inline-flex items-center justify-center p-0.5 ml-1 shrink-0"
+                    className="inline-flex items-center justify-center p-0.5 ml-2 shrink-0"
                     onClick={() => setInfoModalOpen(true)}
                     aria-label={currentLang === "zh" ? "说明" : "Info"}
                   >
