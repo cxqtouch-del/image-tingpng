@@ -21,7 +21,7 @@ function postSelectedNodesToUI() {
             try {
                 thumbnailBytes = yield node.exportAsync({
                     format: 'PNG',
-                constraint: { type: 'WIDTH', value: 96 } // Generate a 96px width thumbnail for sharper UI preview
+                    constraint: { type: 'WIDTH', value: 96 } // Generate a 96px width thumbnail for sharper UI preview
                 });
             }
             catch (e) {
@@ -128,7 +128,7 @@ figma.ui.onmessage = (msg) => __awaiter(void 0, void 0, void 0, function* () {
                     figma.ui.postMessage({
                         type: 'export-complete-data',
                         filename: `${node.name}@${scale}x.${format.toLowerCase()}`,
-                        bytes: Array.from(imageBytes) // Convert back to Array for message passing
+                        bytes: imageBytes,
                     });
                     exportCount++;
                 }

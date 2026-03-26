@@ -198,6 +198,9 @@ export default function PluginUI() {
 
   const selectedLayerCount = selectedNodeIdsOrder.length
 
+  const zipForced = selectedNodeIds.size > 1 || selectedScales.length > 1
+  const effectiveZipDownload = zipForced || isZipDownload
+
   const selectAllDisabled = isManuallyCleared || candidateNodes.length === 0
   const exportDisabled = selectedLayerCount === 0 || selectedScales.length === 0
 
@@ -326,123 +329,19 @@ export default function PluginUI() {
     requestResizeAfterDom()
   }, [requestResizeAfterDom])
 
-  // Update zip enforcement (like original: force zip when count > 1 or multiple scales)
+  // 多图层或多倍率时必须打包；进入该状态时同步为勾选，退出时恢复为不勾选（与原先逻辑一致）
   React.useEffect(() => {
-    const shouldForceZip = selectedNodeIds.size > 1 || selectedScales.length > 1
-    setIsZipDownload(shouldForceZip)
-  }, [selectedNodeIds, selectedScales.length])
+    if (zipForced) setIsZipDownload(true)
+    else setIsZipDownload(false)
+  }, [zipForced])
 
   // Format change
   React.useEffect(() => {
     if (!canUseCloudCompress && isCloudCompress) setIsCloudCompress(false)
   }, [canUseCloudCompress, isCloudCompress])
 
-  // Selection-change handler from main
-  React.useEffect(() => {
-    function onMessage(event: MessageEvent) {
-      const pluginMessage = (event.data as any)?.pluginMessage as PluginMessage | undefined
-      if (!pluginMessage) return
-
-      if (pluginMessage.type === "load-settings") {
-        setStoredApiKey(pluginMessage.apiKey || "")
-        setHasShownInfoModal(!!pluginMessage.hasShownInfoModal)
-        setSavedCompressionCount(pluginMessage.compressionCount ?? null)
-        if (pluginMessage.apiKey) setIsCloudCompress(true)
-      } else if (pluginMessage.type === "api-key-saved") {
-        setStoredApiKey(pluginMessage.apiKey)
-      } else if (pluginMessage.type === "compression-count-updated") {
-        setSavedCompressionCount(pluginMessage.count ?? null)
-      } else if (pluginMessage.type === "selection-change") {
-        const incomingNodes = pluginMessage.nodes || []
-        const incomingCount =
-          typeof (pluginMessage as any).totalSelectedCount === "number"
-            ? (pluginMessage as any).totalSelectedCount
-            : incomingNodes.length
-
-        const MAX = MAX_EXPORT_ITEMS
-        const overLimit = incomingCount > MAX
-        if (overLimit && lastFigmaSelectedCountRef.current <= MAX) {
-          showToast(t(currentLang, "maxExportToast") as string, 2500)
-        }
-        lastFigmaSelectedCountRef.current = incomingCount
-
-        const fallbackCandidateNodes = incomingNodes.slice(0, MAX)
-        const prevCandidateNodes = candidateNodes.slice()
-
-        if (overLimit) {
-          if (!isOverLimitFrozenRef.current) {
-            isOverLimitFrozenRef.current = true
-            frozenCandidateNodesRef.current =
-              prevCandidateNodes.length > 0 ? prevCandidateNodes.slice() : fallbackCandidateNodes.slice()
-          }
-        } else {
-          isOverLimitFrozenRef.current = false
-          frozenCandidateNodesRef.current = []
-        }
-
-        const nextCandidateNodes = overLimit
-          ? frozenCandidateNodesRef.current
-          : fallbackCandidateNodes
-
-        setCandidateNodes(nextCandidateNodes)
-        setIsManuallyCleared(false) // new selection arrived, restore list
-
-        const newIds = nextCandidateNodes.map((n) => n.id)
-        const newSet = new Set(newIds)
-        const oldSet = new Set(selectedNodeIds)
-
-        if (nextCandidateNodes.length === 0) {
-          setSelectedNodeIds(new Set())
-          setSelectedNodeIdsOrder([])
-          showMessage("", "info")
-          requestResizeAfterDom()
-          return
-        }
-
-        if (overLimit) {
-          // Only init selected when empty
-          if (selectedNodeIdsOrder.length === 0) {
-            const set = new Set<string>()
-            const order: string[] = []
-            for (const id of newIds) {
-              set.add(id)
-              order.push(id)
-            }
-            setSelectedNodeIds(set)
-            setSelectedNodeIdsOrder(order)
-          }
-        } else {
-          const filteredOrder = selectedNodeIdsOrder.filter((id) => newSet.has(id))
-          const newOrder = [...filteredOrder]
-          newIds.forEach((id) => {
-            if (!oldSet.has(id)) newOrder.push(id)
-          })
-          setSelectedNodeIds(new Set(newIds))
-          setSelectedNodeIdsOrder(newOrder)
-        }
-
-        requestResizeAfterDom()
-      } else if (pluginMessage.type === "export-complete-data") {
-        // Will be handled by export session ref
-        handleExportCompleteData(pluginMessage.filename, pluginMessage.bytes)
-      } else if (pluginMessage.type === "export-all-complete") {
-        handleExportAllComplete()
-      } else if (pluginMessage.type === "error") {
-        showMessage(pluginMessage.message, "error")
-        setExportInProgress(false)
-      }
-    }
-
-    window.addEventListener("message", onMessage)
-    return () => window.removeEventListener("message", onMessage)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    currentLang,
-    candidateNodes,
-    selectedNodeIds,
-    selectedNodeIdsOrder.length,
-    selectedScales.length,
-  ])
+  /** 每次渲染更新；message 监听只注册一次，避免 selection-change 触发 effect 清理时丢掉导出相关 postMessage */
+  const processPluginMessageRef = React.useRef<(msg: PluginMessage) => void>(() => {})
 
   // Export pipeline refs
   const [exportInProgress, setExportInProgress] = React.useState(false)
@@ -620,6 +519,105 @@ export default function PluginUI() {
     }
   }, [currentLang, showToast])
 
+  processPluginMessageRef.current = (pluginMessage: PluginMessage) => {
+    if (pluginMessage.type === "load-settings") {
+      setStoredApiKey(pluginMessage.apiKey || "")
+      setHasShownInfoModal(!!pluginMessage.hasShownInfoModal)
+      setSavedCompressionCount(pluginMessage.compressionCount ?? null)
+      if (pluginMessage.apiKey) setIsCloudCompress(true)
+    } else if (pluginMessage.type === "api-key-saved") {
+      setStoredApiKey(pluginMessage.apiKey)
+    } else if (pluginMessage.type === "compression-count-updated") {
+      setSavedCompressionCount(pluginMessage.count ?? null)
+    } else if (pluginMessage.type === "selection-change") {
+      const incomingNodes = pluginMessage.nodes || []
+      const incomingCount =
+        typeof (pluginMessage as any).totalSelectedCount === "number"
+          ? (pluginMessage as any).totalSelectedCount
+          : incomingNodes.length
+
+      const MAX = MAX_EXPORT_ITEMS
+      const overLimit = incomingCount > MAX
+      if (overLimit && lastFigmaSelectedCountRef.current <= MAX) {
+        showToast(t(currentLang, "maxExportToast") as string, 2500)
+      }
+      lastFigmaSelectedCountRef.current = incomingCount
+
+      const fallbackCandidateNodes = incomingNodes.slice(0, MAX)
+      const prevCandidateNodes = candidateNodes.slice()
+
+      if (overLimit) {
+        if (!isOverLimitFrozenRef.current) {
+          isOverLimitFrozenRef.current = true
+          frozenCandidateNodesRef.current =
+            prevCandidateNodes.length > 0 ? prevCandidateNodes.slice() : fallbackCandidateNodes.slice()
+        }
+      } else {
+        isOverLimitFrozenRef.current = false
+        frozenCandidateNodesRef.current = []
+      }
+
+      const nextCandidateNodes = overLimit
+        ? frozenCandidateNodesRef.current
+        : fallbackCandidateNodes
+
+      setCandidateNodes(nextCandidateNodes)
+      setIsManuallyCleared(false)
+
+      const newIds = nextCandidateNodes.map((n) => n.id)
+      const newSet = new Set(newIds)
+      const oldSet = new Set(selectedNodeIds)
+
+      if (nextCandidateNodes.length === 0) {
+        setSelectedNodeIds(new Set())
+        setSelectedNodeIdsOrder([])
+        showMessage("", "info")
+        requestResizeAfterDom()
+        return
+      }
+
+      if (overLimit) {
+        if (selectedNodeIdsOrder.length === 0) {
+          const set = new Set<string>()
+          const order: string[] = []
+          for (const id of newIds) {
+            set.add(id)
+            order.push(id)
+          }
+          setSelectedNodeIds(set)
+          setSelectedNodeIdsOrder(order)
+        }
+      } else {
+        const filteredOrder = selectedNodeIdsOrder.filter((id) => newSet.has(id))
+        const newOrder = [...filteredOrder]
+        newIds.forEach((id) => {
+          if (!oldSet.has(id)) newOrder.push(id)
+        })
+        setSelectedNodeIds(new Set(newIds))
+        setSelectedNodeIdsOrder(newOrder)
+      }
+
+      requestResizeAfterDom()
+    } else if (pluginMessage.type === "export-complete-data") {
+      handleExportCompleteData(pluginMessage.filename, pluginMessage.bytes)
+    } else if (pluginMessage.type === "export-all-complete") {
+      handleExportAllComplete()
+    } else if (pluginMessage.type === "error") {
+      showMessage(pluginMessage.message, "error")
+      setExportInProgress(false)
+    }
+  }
+
+  React.useEffect(() => {
+    function onMessage(event: MessageEvent) {
+      const pluginMessage = (event.data as any)?.pluginMessage as PluginMessage | undefined
+      if (!pluginMessage) return
+      processPluginMessageRef.current(pluginMessage)
+    }
+    window.addEventListener("message", onMessage)
+    return () => window.removeEventListener("message", onMessage)
+  }, [])
+
   const handleExportClick = React.useCallback(() => {
     if (exportDisabled) return
     if (isCloudCompress && storedApiKey && savedCompressionCount != null && savedCompressionCount >= 500) {
@@ -636,7 +634,7 @@ export default function PluginUI() {
       activeCompressors: 0,
       pendingRecompress: 0,
       finalizeAfterRecompress: false,
-      isZipDownload,
+      isZipDownload: effectiveZipDownload,
       isCloudCompress,
       apiKey: storedApiKey,
       selectedFormat,
@@ -672,7 +670,7 @@ export default function PluginUI() {
     savedCompressionCount,
     storedApiKey,
     currentLang,
-    isZipDownload,
+    effectiveZipDownload,
     selectedFormat,
     selectedNodeIdsOrder,
     selectedScales,
@@ -913,7 +911,14 @@ export default function PluginUI() {
             <div className="flex flex-col gap-2">
               <div className="flex items-center justify-between">
                 <label className="flex items-center gap-2 text-[13px] text-[#222]">
-                  <Checkbox checked={isZipDownload} onCheckedChange={(v) => setIsZipDownload(v === true)} />
+                  <Checkbox
+                    checked={effectiveZipDownload}
+                    disabled={zipForced}
+                    onCheckedChange={(v) => {
+                      if (zipForced) return
+                      setIsZipDownload(v === true)
+                    }}
+                  />
                   <span>{t(currentLang, "packageDownload")}</span>
                 </label>
               </div>
