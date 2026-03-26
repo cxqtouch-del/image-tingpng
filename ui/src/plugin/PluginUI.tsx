@@ -906,30 +906,32 @@ export default function PluginUI() {
             </div>
 
             {canUseCloudCompress ? (
-              <label className="flex items-center gap-2 text-[13px] text-[#222]">
-                <Checkbox
-                  checked={isCloudCompress}
-                  onCheckedChange={(v) => {
-                    if (v === true) {
-                      if (!storedApiKey) {
-                        if (!hasShownInfoModal) {
-                          setPendingAction("toggleCheckbox")
-                          setInfoModalOpen(true)
+              <label className="flex items-center text-[13px] text-[#222]">
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    checked={isCloudCompress}
+                    onCheckedChange={(v) => {
+                      if (v === true) {
+                        if (!storedApiKey) {
+                          if (!hasShownInfoModal) {
+                            setPendingAction("toggleCheckbox")
+                            setInfoModalOpen(true)
+                            return
+                          }
+                          openManageKeyModal()
                           return
                         }
-                        openManageKeyModal()
+                        setIsCloudCompress(true)
                         return
                       }
-                      setIsCloudCompress(true)
-                      return
-                    }
-                    setIsCloudCompress(false)
-                  }}
-                />
-                <span>TinyPNG</span>
+                      setIsCloudCompress(false)
+                    }}
+                  />
+                  <span>TinyPNG</span>
+                </div>
                 <button
                   type="button"
-                  className="inline-flex items-center justify-center p-0.5"
+                  className="inline-flex items-center justify-center p-0.5 ml-1 shrink-0"
                   onClick={() => setInfoModalOpen(true)}
                   aria-label={currentLang === "zh" ? "说明" : "Info"}
                 >
@@ -937,7 +939,7 @@ export default function PluginUI() {
                 </button>
                 <button
                   type="button"
-                  className="ml-2 text-[#2E3BF8]"
+                  className="ml-3 shrink-0 text-[#2E3BF8]"
                   onClick={() => {
                     if (!hasShownInfoModal) {
                       setPendingAction("openManageKey")
