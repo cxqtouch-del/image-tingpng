@@ -1002,7 +1002,7 @@ export default function PluginUI() {
 
       {/* API Key Modal */}
       <Dialog open={apiKeyModalOpen} onOpenChange={setApiKeyModalOpen}>
-        <DialogContent className="w-[260px] p-4 rounded-2xl">
+        <DialogContent className="w-[260px] p-4 rounded-2xl gap-5">
           <DialogHeader>
             <DialogTitle>{t(currentLang, "modalTitle")}</DialogTitle>
           </DialogHeader>
