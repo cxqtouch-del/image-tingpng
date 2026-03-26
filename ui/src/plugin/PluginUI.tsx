@@ -34,6 +34,14 @@ type PluginMessage =
   | { type: "api-key-saved"; apiKey: string }
   | { type: "compression-count-updated"; count: number | null }
   | { type: "selection-change"; nodes: PluginLayerNode[]; totalSelectedCount: number }
+  | {
+      type: "export-file-chunk"
+      fileId: string
+      filename: string
+      chunkIndex: number
+      totalChunks: number
+      bytes: number[]
+    }
   | { type: "export-complete-data"; filename: string; bytes: number[] | Uint8Array }
   | { type: "export-all-complete"; total: number }
   | { type: "error"; message: string }
@@ -77,6 +85,7 @@ const T = {
     exportingToast: "导出中...",
     maxExportToast: "最多可一次导出5个内容",
     zipTooltip: "由于文件较多<br>打包后一键下载",
+    zipHoverTip: "文件较多，打包后下载",
     compressFailed: "压缩失败",
     unknownError: "未知错误",
     saveSuccess: "保存成功",
@@ -90,6 +99,7 @@ const T = {
     keyVerifyNetworkError: "网络异常，暂时无法校验 Key",
     browserBlockHint:
       '提示：浏览器可能拦截多文件下载。若仅下载了一个文件，请在浏览器站点设置中允许"自动下载多个文件"，或使用"打包下载"。',
+    enterTinypngKeyToast: "请输入「TingPng」key",
   },
   en: {
     exportContent: "Export",
@@ -127,6 +137,7 @@ const T = {
     exportingToast: "Exporting...",
     maxExportToast: "Max 5 items per export",
     zipTooltip: "Multiple files.<br>Package for one-click download",
+    zipHoverTip: "Many files, package before download",
     compressFailed: "Compression failed",
     unknownError: "Unknown error",
     saveSuccess: "Saved successfully",
@@ -140,6 +151,7 @@ const T = {
     keyVerifyNetworkError: "Network error. Unable to verify key right now.",
     browserBlockHint:
       'Tip: Browser may block multiple downloads. If only one file downloaded, allow "Automatically download multiple files" in site settings, or use "Package download".',
+    enterTinypngKeyToast: "Please enter TingPng key",
   },
 } as const
 
@@ -200,6 +212,7 @@ export default function PluginUI() {
 
   const selectAllDisabled = isManuallyCleared || candidateNodes.length === 0
   const exportDisabled = selectedLayerCount === 0 || selectedScales.length === 0
+  const isZipForced = selectedNodeIds.size > 1 || selectedScales.length > 1
 
   // Thumbnail URLs for candidate nodes
   const [thumbUrls, setThumbUrls] = React.useState<Record<string, string>>({})
@@ -328,121 +341,16 @@ export default function PluginUI() {
 
   // Update zip enforcement (like original: force zip when count > 1 or multiple scales)
   React.useEffect(() => {
-    const shouldForceZip = selectedNodeIds.size > 1 || selectedScales.length > 1
-    setIsZipDownload(shouldForceZip)
-  }, [selectedNodeIds, selectedScales.length])
+    setIsZipDownload(isZipForced)
+  }, [isZipForced])
 
   // Format change
   React.useEffect(() => {
     if (!canUseCloudCompress && isCloudCompress) setIsCloudCompress(false)
   }, [canUseCloudCompress, isCloudCompress])
 
-  // Selection-change handler from main
-  React.useEffect(() => {
-    function onMessage(event: MessageEvent) {
-      const pluginMessage = (event.data as any)?.pluginMessage as PluginMessage | undefined
-      if (!pluginMessage) return
-
-      if (pluginMessage.type === "load-settings") {
-        setStoredApiKey(pluginMessage.apiKey || "")
-        setHasShownInfoModal(!!pluginMessage.hasShownInfoModal)
-        setSavedCompressionCount(pluginMessage.compressionCount ?? null)
-        if (pluginMessage.apiKey) setIsCloudCompress(true)
-      } else if (pluginMessage.type === "api-key-saved") {
-        setStoredApiKey(pluginMessage.apiKey)
-      } else if (pluginMessage.type === "compression-count-updated") {
-        setSavedCompressionCount(pluginMessage.count ?? null)
-      } else if (pluginMessage.type === "selection-change") {
-        const incomingNodes = pluginMessage.nodes || []
-        const incomingCount =
-          typeof (pluginMessage as any).totalSelectedCount === "number"
-            ? (pluginMessage as any).totalSelectedCount
-            : incomingNodes.length
-
-        const MAX = MAX_EXPORT_ITEMS
-        const overLimit = incomingCount > MAX
-        if (overLimit && lastFigmaSelectedCountRef.current <= MAX) {
-          showToast(t(currentLang, "maxExportToast") as string, 2500)
-        }
-        lastFigmaSelectedCountRef.current = incomingCount
-
-        const fallbackCandidateNodes = incomingNodes.slice(0, MAX)
-        const prevCandidateNodes = candidateNodes.slice()
-
-        if (overLimit) {
-          if (!isOverLimitFrozenRef.current) {
-            isOverLimitFrozenRef.current = true
-            frozenCandidateNodesRef.current =
-              prevCandidateNodes.length > 0 ? prevCandidateNodes.slice() : fallbackCandidateNodes.slice()
-          }
-        } else {
-          isOverLimitFrozenRef.current = false
-          frozenCandidateNodesRef.current = []
-        }
-
-        const nextCandidateNodes = overLimit
-          ? frozenCandidateNodesRef.current
-          : fallbackCandidateNodes
-
-        setCandidateNodes(nextCandidateNodes)
-        setIsManuallyCleared(false) // new selection arrived, restore list
-
-        const newIds = nextCandidateNodes.map((n) => n.id)
-        const newSet = new Set(newIds)
-        const oldSet = new Set(selectedNodeIds)
-
-        if (nextCandidateNodes.length === 0) {
-          setSelectedNodeIds(new Set())
-          setSelectedNodeIdsOrder([])
-          showMessage("", "info")
-          requestResizeAfterDom()
-          return
-        }
-
-        if (overLimit) {
-          // Only init selected when empty
-          if (selectedNodeIdsOrder.length === 0) {
-            const set = new Set<string>()
-            const order: string[] = []
-            for (const id of newIds) {
-              set.add(id)
-              order.push(id)
-            }
-            setSelectedNodeIds(set)
-            setSelectedNodeIdsOrder(order)
-          }
-        } else {
-          const filteredOrder = selectedNodeIdsOrder.filter((id) => newSet.has(id))
-          const newOrder = [...filteredOrder]
-          newIds.forEach((id) => {
-            if (!oldSet.has(id)) newOrder.push(id)
-          })
-          setSelectedNodeIds(new Set(newIds))
-          setSelectedNodeIdsOrder(newOrder)
-        }
-
-        requestResizeAfterDom()
-      } else if (pluginMessage.type === "export-complete-data") {
-        // Will be handled by export session ref
-        handleExportCompleteData(pluginMessage.filename, pluginMessage.bytes)
-      } else if (pluginMessage.type === "export-all-complete") {
-        handleExportAllComplete()
-      } else if (pluginMessage.type === "error") {
-        showMessage(pluginMessage.message, "error")
-        setExportInProgress(false)
-      }
-    }
-
-    window.addEventListener("message", onMessage)
-    return () => window.removeEventListener("message", onMessage)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    currentLang,
-    candidateNodes,
-    selectedNodeIds,
-    selectedNodeIdsOrder.length,
-    selectedScales.length,
-  ])
+  /** 每次渲染更新；message 监听只注册一次，避免 selection-change 触发 effect 清理时丢掉导出相关 postMessage */
+  const processPluginMessageRef = React.useRef<(msg: PluginMessage) => void>(() => {})
 
   // Export pipeline refs
   const [exportInProgress, setExportInProgress] = React.useState(false)
@@ -450,6 +358,15 @@ export default function PluginUI() {
   const exportSessionRef = React.useRef<{
     exportedFiles: ZipFile[]
     downloadQueue: Array<{ filename: string; bytes: Uint8Array }>
+    chunkFiles: Record<
+      string,
+      {
+        filename: string
+        totalChunks: number
+        chunks: Array<Uint8Array | undefined>
+        receivedChunks: number
+      }
+    >
     downloading: boolean
     allComplete: boolean
     compressQueue: Array<{ filename: string; bytes: Uint8Array; apiKey: string }>
@@ -462,6 +379,22 @@ export default function PluginUI() {
     selectedFormat: "PNG" | "JPG" | "SVG"
     cancelled: boolean
   } | null>(null)
+
+  const concatUint8Arrays = React.useCallback((chunks: Array<Uint8Array | undefined>) => {
+    let total = 0
+    for (const chunk of chunks) {
+      if (chunk) total += chunk.length
+    }
+
+    const merged = new Uint8Array(total)
+    let offset = 0
+    for (const chunk of chunks) {
+      if (!chunk) continue
+      merged.set(chunk, offset)
+      offset += chunk.length
+    }
+    return merged
+  }, [])
 
   const processNextDownload = React.useCallback(function processNextDownload(
     session: NonNullable<typeof exportSessionRef.current>
@@ -570,10 +503,38 @@ export default function PluginUI() {
     }
   }, [currentLang, hideToast, processNextDownload, showMessage])
 
-  const finalizeAfterTinyPNG = React.useCallback((session: NonNullable<typeof exportSessionRef.current>) => {
-    if (session.cancelled) return
-    if (session.isZipDownload) {
-      const blob = buildZip(session.exportedFiles)
+  const handleExportFileChunk = React.useCallback(
+    (fileId: string, filename: string, chunkIndex: number, totalChunks: number, bytes: number[]) => {
+      const session = exportSessionRef.current
+      if (!session || session.cancelled) return
+
+      const file =
+        session.chunkFiles[fileId] ??
+        {
+          filename,
+          totalChunks,
+          chunks: new Array<Uint8Array | undefined>(totalChunks),
+          receivedChunks: 0,
+        }
+
+      if (!file.chunks[chunkIndex]) {
+        file.chunks[chunkIndex] = new Uint8Array(bytes)
+        file.receivedChunks += 1
+      }
+
+      session.chunkFiles[fileId] = file
+
+      if (file.receivedChunks === file.totalChunks) {
+        delete session.chunkFiles[fileId]
+        handleExportCompleteData(file.filename, concatUint8Arrays(file.chunks))
+      }
+    },
+    [concatUint8Arrays, handleExportCompleteData]
+  )
+
+  const downloadZip = React.useCallback(
+    async (files: ZipFile[]) => {
+      const blob = await buildZip(files)
       const a = document.createElement("a")
       const url = URL.createObjectURL(blob)
       a.href = url
@@ -582,16 +543,28 @@ export default function PluginUI() {
       a.click()
       document.body.removeChild(a)
       setTimeout(() => URL.revokeObjectURL(url), 1000)
-      setExportInProgress(false)
-      showToast(t(currentLang, "exportSuccess") as string)
+    },
+    []
+  )
+
+  const finalizeAfterTinyPNG = React.useCallback((session: NonNullable<typeof exportSessionRef.current>) => {
+    if (session.cancelled) return
+    if (session.isZipDownload) {
+      void downloadZip(session.exportedFiles)
+        .then(() => {
+          setExportInProgress(false)
+          showToast(t(currentLang, "exportSuccess") as string)
+        })
+        .catch((error: any) => {
+          hideToast()
+          showMessage(`ZIP 打包失败：${error?.message || t(currentLang, "unknownError")}`, "error")
+          setExportInProgress(false)
+        })
     } else if (session.downloadQueue.length === 0) {
       setExportInProgress(false)
       showToast(t(currentLang, "exportSuccess") as string)
-    } else {
-      // 下载队列非空：标记 allComplete，由 processNextDownload 在队列清空时结束状态
-      session.allComplete = true
     }
-  }, [currentLang, showToast])
+  }, [currentLang, downloadZip, hideToast, showMessage, showToast])
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const handleExportAllComplete = React.useCallback(() => {
@@ -602,17 +575,16 @@ export default function PluginUI() {
       return
     }
     if (session.isZipDownload) {
-      const blob = buildZip(session.exportedFiles)
-      const a = document.createElement("a")
-      const url = URL.createObjectURL(blob)
-      a.href = url
-      a.download = "export.zip"
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      setTimeout(() => URL.revokeObjectURL(url), 1000)
-      setExportInProgress(false)
-      showToast(t(currentLang, "exportSuccess") as string)
+      void downloadZip(session.exportedFiles)
+        .then(() => {
+          setExportInProgress(false)
+          showToast(t(currentLang, "exportSuccess") as string)
+        })
+        .catch((error: any) => {
+          hideToast()
+          showMessage(`ZIP 打包失败：${error?.message || t(currentLang, "unknownError")}`, "error")
+          setExportInProgress(false)
+        })
     } else {
       session.allComplete = true
       if (session.downloadQueue.length === 0) {
@@ -621,10 +593,122 @@ export default function PluginUI() {
         showToast(t(currentLang, "exportSuccess") as string)
       }
     }
-  }, [currentLang, showToast])
+  }, [currentLang, downloadZip, hideToast, showMessage, showToast])
+
+  processPluginMessageRef.current = (pluginMessage: PluginMessage) => {
+    if (pluginMessage.type === "load-settings") {
+      setStoredApiKey(pluginMessage.apiKey || "")
+      setHasShownInfoModal(!!pluginMessage.hasShownInfoModal)
+      setSavedCompressionCount(pluginMessage.compressionCount ?? null)
+      if (pluginMessage.apiKey) setIsCloudCompress(true)
+    } else if (pluginMessage.type === "api-key-saved") {
+      setStoredApiKey(pluginMessage.apiKey)
+    } else if (pluginMessage.type === "compression-count-updated") {
+      setSavedCompressionCount(pluginMessage.count ?? null)
+    } else if (pluginMessage.type === "selection-change") {
+      const incomingNodes = pluginMessage.nodes || []
+      const incomingCount =
+        typeof (pluginMessage as any).totalSelectedCount === "number"
+          ? (pluginMessage as any).totalSelectedCount
+          : incomingNodes.length
+
+      const MAX = MAX_EXPORT_ITEMS
+      const overLimit = incomingCount > MAX
+      if (overLimit && lastFigmaSelectedCountRef.current <= MAX) {
+        showToast(t(currentLang, "maxExportToast") as string, 2500)
+      }
+      lastFigmaSelectedCountRef.current = incomingCount
+
+      const fallbackCandidateNodes = incomingNodes.slice(0, MAX)
+      const prevCandidateNodes = candidateNodes.slice()
+
+      if (overLimit) {
+        if (!isOverLimitFrozenRef.current) {
+          isOverLimitFrozenRef.current = true
+          frozenCandidateNodesRef.current =
+            prevCandidateNodes.length > 0 ? prevCandidateNodes.slice() : fallbackCandidateNodes.slice()
+        }
+      } else {
+        isOverLimitFrozenRef.current = false
+        frozenCandidateNodesRef.current = []
+      }
+
+      const nextCandidateNodes = overLimit
+        ? frozenCandidateNodesRef.current
+        : fallbackCandidateNodes
+
+      setCandidateNodes(nextCandidateNodes)
+      setIsManuallyCleared(false)
+
+      const newIds = nextCandidateNodes.map((n) => n.id)
+      const newSet = new Set(newIds)
+      const oldSet = new Set(selectedNodeIds)
+
+      if (nextCandidateNodes.length === 0) {
+        setSelectedNodeIds(new Set())
+        setSelectedNodeIdsOrder([])
+        showMessage("", "info")
+        requestResizeAfterDom()
+        return
+      }
+
+      if (overLimit) {
+        if (selectedNodeIdsOrder.length === 0) {
+          const set = new Set<string>()
+          const order: string[] = []
+          for (const id of newIds) {
+            set.add(id)
+            order.push(id)
+          }
+          setSelectedNodeIds(set)
+          setSelectedNodeIdsOrder(order)
+        }
+      } else {
+        const filteredOrder = selectedNodeIdsOrder.filter((id) => newSet.has(id))
+        const newOrder = [...filteredOrder]
+        newIds.forEach((id) => {
+          if (!oldSet.has(id)) newOrder.push(id)
+        })
+        setSelectedNodeIds(new Set(newIds))
+        setSelectedNodeIdsOrder(newOrder)
+      }
+
+      requestResizeAfterDom()
+    } else if (pluginMessage.type === "export-file-chunk") {
+      handleExportFileChunk(
+        pluginMessage.fileId,
+        pluginMessage.filename,
+        pluginMessage.chunkIndex,
+        pluginMessage.totalChunks,
+        pluginMessage.bytes
+      )
+    } else if (pluginMessage.type === "export-complete-data") {
+      handleExportCompleteData(pluginMessage.filename, pluginMessage.bytes)
+    } else if (pluginMessage.type === "export-all-complete") {
+      handleExportAllComplete()
+    } else if (pluginMessage.type === "error") {
+      hideToast()
+      showMessage(pluginMessage.message, "error")
+      setExportInProgress(false)
+    }
+  }
+
+  React.useEffect(() => {
+    function onMessage(event: MessageEvent) {
+      const pluginMessage = (event.data as any)?.pluginMessage as PluginMessage | undefined
+      if (!pluginMessage) return
+      processPluginMessageRef.current(pluginMessage)
+    }
+    window.addEventListener("message", onMessage)
+    return () => window.removeEventListener("message", onMessage)
+  }, [])
 
   const handleExportClick = React.useCallback(() => {
     if (exportDisabled) return
+    if (isCloudCompress && !storedApiKey.trim()) {
+      showToast(t(currentLang, "enterTinypngKeyToast") as string)
+      return
+    }
     if (isCloudCompress && storedApiKey && savedCompressionCount != null && savedCompressionCount >= 500) {
       setKeyLimitModalOpen(true)
       return
@@ -633,6 +717,7 @@ export default function PluginUI() {
     const session = {
       exportedFiles: [] as ZipFile[],
       downloadQueue: [] as Array<{ filename: string; bytes: Uint8Array }>,
+      chunkFiles: {},
       downloading: false,
       allComplete: false,
       compressQueue: [] as Array<{ filename: string; bytes: Uint8Array; apiKey: string }>,
@@ -916,7 +1001,26 @@ export default function PluginUI() {
             <div className="flex flex-col gap-2">
               <div className="flex items-center justify-between">
                 <label className="flex items-center gap-2 text-[13px] text-[#222]">
-                  <Checkbox checked={isZipDownload} onCheckedChange={(v) => setIsZipDownload(v === true)} />
+                  <div className="relative group">
+                    <Checkbox
+                      checked={isZipDownload}
+                      disabled={isZipForced}
+                      onCheckedChange={(v) => {
+                        if (isZipForced && v !== true) return
+                        setIsZipDownload(v === true)
+                      }}
+                    />
+                    {isZipForced ? (
+                      <div
+                        className="pointer-events-none absolute left-1/2 bottom-full mb-2 -translate-x-1/2
+                        opacity-0 group-hover:opacity-100 transition-opacity
+                        bg-black/80 text-white text-[12px] px-[6px] py-[4px] rounded-[6px]
+                        whitespace-nowrap z-[2000]"
+                      >
+                        {t(currentLang, "zipHoverTip") as string}
+                      </div>
+                    ) : null}
+                  </div>
                   <span>{t(currentLang, "packageDownload")}</span>
                 </label>
               </div>
@@ -1002,14 +1106,17 @@ export default function PluginUI() {
 
       {/* API Key Modal */}
       <Dialog open={apiKeyModalOpen} onOpenChange={setApiKeyModalOpen}>
-        <DialogContent className="w-[260px] p-4 rounded-2xl gap-3">
+        <DialogContent className="w-[292px] p-4 rounded-2xl gap-3">
           <DialogHeader className="gap-0 mb-4">
             <DialogTitle>{t(currentLang, "modalTitle")}</DialogTitle>
           </DialogHeader>
           <div className="text-[13px] text-muted-foreground leading-5">
             <div id="currentKeyContainer" className="mb-2">
               {t(currentLang, "currentKey")}{" "}
-              <span style={{ color: "#222", fontFamily: "monospace" }}>
+              <span
+                className="block mt-1 break-all leading-5"
+                style={{ color: "#222", fontFamily: "monospace" }}
+              >
                 {storedApiKey || t(currentLang, "notSet")}
               </span>
             </div>
@@ -1070,18 +1177,18 @@ export default function PluginUI() {
               </div>
             </div>
           </div>
-          <DialogFooter className="flex-row gap-3">
+          <DialogFooter className="grid grid-cols-2 gap-3 w-full">
             <Button
               variant="outline"
               onClick={() => setApiKeyModalOpen(false)}
-              className="flex-1 h-[36px] rounded-md text-[13px]"
+              className="w-full min-w-0 h-[36px] rounded-md text-[13px]"
             >
               {t(currentLang, "cancel")}
             </Button>
             <Button
               onClick={handleSaveKey}
               disabled={isSavingKey}
-              className="flex-1 h-[36px] rounded-md text-[13px] bg-[#2E3BF8] hover:bg-[#2530c9]"
+              className="w-full min-w-0 h-[36px] rounded-md text-[13px] bg-[#2E3BF8] hover:bg-[#2530c9]"
             >
               {isSavingKey ? "..." : t(currentLang, "save")}
             </Button>
