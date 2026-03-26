@@ -7,7 +7,6 @@ import {
   DialogContent,
   DialogFooter,
   DialogHeader,
-  DialogOverlay,
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -988,7 +987,6 @@ export default function PluginUI() {
 
       {/* API Key Modal */}
       <Dialog open={apiKeyModalOpen} onOpenChange={setApiKeyModalOpen}>
-        <DialogOverlay />
         <DialogContent
           className="w-[260px] p-4 rounded-2xl"
           onOpenAutoFocus={(e) => e.preventDefault()}
@@ -1068,7 +1066,6 @@ export default function PluginUI() {
 
       {/* Key limit Modal */}
       <Dialog open={keyLimitModalOpen} onOpenChange={setKeyLimitModalOpen}>
-        <DialogOverlay />
         <DialogContent className="w-[260px] p-4 rounded-2xl">
           <DialogHeader>
             <DialogTitle>{t(currentLang, "cannotExport")}</DialogTitle>
@@ -1112,7 +1109,6 @@ export default function PluginUI() {
           }
         }}
       >
-        <DialogOverlay />
         <DialogContent className="w-[260px] p-4 rounded-2xl">
           <DialogHeader>
             <DialogTitle>{t(currentLang, "howToGetKey")}</DialogTitle>
