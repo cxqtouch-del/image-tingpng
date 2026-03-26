@@ -1012,7 +1012,7 @@ export default function PluginUI() {
                     />
                     {isZipForced ? (
                       <div
-                        className="pointer-events-none absolute left-1/2 bottom-full mb-2 -translate-x-1/2
+                        className="pointer-events-none absolute left-0 bottom-full mb-2
                         opacity-0 group-hover:opacity-100 transition-opacity
                         bg-black/80 text-white text-[12px] px-[6px] py-[4px] rounded-[6px]
                         whitespace-nowrap z-[2000]"
