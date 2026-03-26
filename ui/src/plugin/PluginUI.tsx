@@ -816,7 +816,7 @@ export default function PluginUI() {
 
         <div className="max-h-[400px] overflow-y-auto flex flex-col gap-3">
           {renderedNodes.length === 0 ? (
-            <div id="noSelectionMessage" className="text-[13px] text-[#888] text-center py-6">
+            <div id="noSelectionMessage" className="text-[13px] text-[#888] text-center py-2">
               {t(currentLang, "noSelection")}
             </div>
           ) : (
