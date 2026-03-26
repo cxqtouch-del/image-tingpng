@@ -925,12 +925,10 @@ export default function PluginUI() {
                       checked={isCloudCompress}
                       onCheckedChange={(v) => {
                         if (v === true) {
-                          if (!storedApiKey) {
-                            if (!hasShownInfoModal) {
-                              setPendingAction("toggleCheckbox")
-                              setInfoModalOpen(true)
-                            }
-                            // 没有 key 时不自动弹管理 key，保持未勾选，等用户主动点"管理 Key"
+                          if (!hasShownInfoModal) {
+                            // 第一次勾选先弹说明弹窗，关掉后再启用
+                            setPendingAction("toggleCheckbox")
+                            setInfoModalOpen(true)
                             return
                           }
                           setIsCloudCompress(true)
@@ -1002,7 +1000,7 @@ export default function PluginUI() {
       {/* API Key Modal */}
       <Dialog open={apiKeyModalOpen} onOpenChange={setApiKeyModalOpen}>
         <DialogContent className="w-[260px] p-4 rounded-2xl gap-3">
-          <DialogHeader>
+          <DialogHeader className="gap-3">
             <DialogTitle>{t(currentLang, "modalTitle")}</DialogTitle>
           </DialogHeader>
           <div className="text-[13px] text-muted-foreground leading-5">
