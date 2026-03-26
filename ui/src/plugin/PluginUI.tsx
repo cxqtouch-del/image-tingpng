@@ -53,7 +53,6 @@ const T = {
     exportBtn: "导出",
     exportBtnCount: "导出 {{n}} 个内容",
     modalTitle: "设置 TinyPNG API Key",
-    keyNote: "Key 将保存在本机，每月免费 500 次。",
     currentKey: "当前 Key:",
     usedCount: "已使用 {{n}} / 500 次",
     enterKeyPlaceholder: "输入 API Key",
@@ -104,7 +103,6 @@ const T = {
     exportBtn: "Export",
     exportBtnCount: "Export {{n}} items",
     modalTitle: "Set TinyPNG API Key",
-    keyNote: "Key is saved locally. 500 free compressions per month.",
     currentKey: "Current Key:",
     usedCount: "Used {{n}} / 500",
     enterKeyPlaceholder: "Enter API Key",
@@ -1002,7 +1000,6 @@ export default function PluginUI() {
                 {storedApiKey || t(currentLang, "notSet")}
               </span>
             </div>
-            <p>{t(currentLang, "keyNote")}</p>
             <div id="compressionCountContainer" className="mt-2">
               {t(currentLang, "usedCount", { n: savedCompressionCount ?? "--" })}
             </div>

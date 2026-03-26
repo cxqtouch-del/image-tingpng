@@ -620,7 +620,6 @@ text-align: center;            padding: 16px 0 10px;
             <div id="currentKeyContainer" style="margin-bottom: 8px; font-size: 12px; color: var(--text-secondary);">
                 当前 Key: <span id="currentKeyText" style="color: var(--text-primary); font-family: monospace;"></span>
             </div>
-                <p>Key 将保存在本机，每月免费 500 次。</p>
             <div id="compressionCountContainer" style="margin-bottom: 8px; font-size: 12px; color: var(--text-secondary);">
                 已使用 <span id="compressionCountNum">--</span> / 500 次
             </div>
@@ -717,7 +716,7 @@ text-align: center;            padding: 16px 0 10px;
                 exportContent: '导出内容', selectAll: '全选', clear: '清空', noSelection: '单次导出上限为 5 个',
                 exportSize: '导出尺寸', selectSizeError: '请选择一个导出尺寸', exportFormat: '导出格式',
                 packageDownload: '打包下载', manageKey: '管理 Key', exportBtn: '导出', exportBtnCount: '导出 {{n}} 个内容',
-                modalTitle: '设置 TinyPNG API Key', keyNote: 'Key 将保存在本机，每月免费 500 次。',
+                modalTitle: '设置 TinyPNG API Key',
                 currentKey: '当前 Key:', usedCount: '已使用 {{n}} / 500 次', enterKeyPlaceholder: '输入 API Key',
                 cancel: '取消', save: '保存', cannotExport: '无法导出', keyLimitReached: 'Key 使用次数已达到 500 次限制',
                 gotIt: '知道了', howToGetKey: '如何获取 API Key？', iGotIt: '我知道了',
@@ -741,7 +740,7 @@ text-align: center;            padding: 16px 0 10px;
                 exportContent: 'Export', selectAll: 'Select all', clear: 'Clear', noSelection: 'Max 5 items per export',
                 exportSize: 'Export size', selectSizeError: 'Please select an export size', exportFormat: 'Export format',
                 packageDownload: 'Package download', manageKey: 'Manage Key', exportBtn: 'Export', exportBtnCount: 'Export {{n}} items',
-                modalTitle: 'Set TinyPNG API Key', keyNote: 'Key is saved locally. 500 free compressions per month.',
+                modalTitle: 'Set TinyPNG API Key',
                 currentKey: 'Current Key:', usedCount: 'Used {{n}} / 500', enterKeyPlaceholder: 'Enter API Key',
                 cancel: 'Cancel', save: 'Save', cannotExport: 'Cannot export', keyLimitReached: 'Key usage has reached the 500 limit',
                 gotIt: 'Got it', howToGetKey: 'How to get API Key?', iGotIt: 'I got it',
@@ -791,8 +790,6 @@ text-align: center;            padding: 16px 0 10px;
             if (manageKeyLink) manageKeyLink.textContent = t('manageKey');
             const apiModalHeader = document.querySelector('#apiKeyModal .modal-header');
             if (apiModalHeader) apiModalHeader.textContent = t('modalTitle');
-            const apiModalP = document.querySelector('#apiKeyModal .modal-body > p');
-            if (apiModalP) apiModalP.textContent = t('keyNote');
             const currentKeyContainer = document.getElementById('currentKeyContainer');
             if (currentKeyContainer && currentKeyText) {
                 currentKeyContainer.innerHTML = t('currentKey') + ' <span id="currentKeyText" style="color: var(--text-primary); font-family: monospace;">' + (currentKeyText.textContent || '') + '</span>';
