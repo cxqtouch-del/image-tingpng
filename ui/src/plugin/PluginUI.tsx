@@ -775,49 +775,50 @@ export default function PluginUI() {
       className="w-[300px] bg-background text-foreground"
     >
       <div className="p-4 flex flex-col gap-5">
-        <div className="flex items-center justify-between mb-3">
-          <div className="text-[13px] font-medium text-[#222]">
-            <span>{t(currentLang, "exportContent")}</span> ({selectedLayerCount})
-          </div>
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
-              <button
-                id="selectAllLayers"
-                onClick={handleSelectAll}
-                disabled={selectAllDisabled}
-                className={cn(
-                  "text-[13px] font-normal text-[#2E3BF8] select-none",
-                  selectAllDisabled && "text-[#888] cursor-default pointer-events-none"
-                )}
-              >
-                {t(currentLang, "selectAll")}
-              </button>
-              <button
-                id="clearAllLayers"
-                onClick={handleClearAll}
-                className="text-[13px] font-normal text-[#ff4d4f] select-none"
-              >
-                {t(currentLang, "clear")}
-              </button>
+        <div className="flex flex-col gap-4">
+          <div className="flex items-center justify-between">
+            <div className="text-[13px] font-medium text-[#222]">
+              <span>{t(currentLang, "exportContent")}</span> ({selectedLayerCount})
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                const next = currentLang === "zh" ? "en" : "zh"
-                setCurrentLang(next)
-                try {
-                  localStorage.setItem("plugin-lang", next)
-                } catch {}
-              }}
-              className="h-auto px-2 py-1 text-[11px] border border-[#e0e0e0] rounded-md"
-            >
-              中/EN
-            </Button>
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <button
+                  id="selectAllLayers"
+                  onClick={handleSelectAll}
+                  disabled={selectAllDisabled}
+                  className={cn(
+                    "text-[13px] font-normal text-[#2E3BF8] select-none",
+                    selectAllDisabled && "text-[#888] cursor-default pointer-events-none"
+                  )}
+                >
+                  {t(currentLang, "selectAll")}
+                </button>
+                <button
+                  id="clearAllLayers"
+                  onClick={handleClearAll}
+                  className="text-[13px] font-normal text-[#ff4d4f] select-none"
+                >
+                  {t(currentLang, "clear")}
+                </button>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const next = currentLang === "zh" ? "en" : "zh"
+                  setCurrentLang(next)
+                  try {
+                    localStorage.setItem("plugin-lang", next)
+                  } catch {}
+                }}
+                className="h-auto px-2 py-1 text-[11px] border border-[#e0e0e0] rounded-md"
+              >
+                中/EN
+              </Button>
+            </div>
           </div>
-        </div>
 
-        <div className="max-h-[400px] overflow-y-auto flex flex-col gap-3">
+          <div className="max-h-[400px] overflow-y-auto flex flex-col gap-3">
           {renderedNodes.length === 0 ? (
             <div id="noSelectionMessage" className="text-[13px] text-[#888] text-center py-2">
               {t(currentLang, "noSelection")}
@@ -845,6 +846,7 @@ export default function PluginUI() {
               )
             })
           )}
+          </div>
         </div>
 
         <div className="flex flex-col gap-2">
