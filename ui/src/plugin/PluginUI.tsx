@@ -12,7 +12,8 @@ import {
 } from "@/components/ui/dialog"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { PluginInfoIcon } from "@/components/icons/PluginInfoIcon"
-import { SpriteIcon } from "@/components/icons/SpriteIcon"
+import { PluginEyeIcon } from "@/components/icons/PluginEyeIcon"
+import { PluginEyeOffIcon } from "@/components/icons/PluginEyeOffIcon"
 import { cn } from "@/lib/utils"
 
 import type { ZipFile } from "./export/zip"
@@ -1053,10 +1054,7 @@ export default function PluginUI() {
                         : "Hide key"
                   }
                 >
-                  <SpriteIcon
-                    id={isPassword ? "plugin-eye-icon" : "plugin-eye-off-icon"}
-                    size={16}
-                  />
+                  {isPassword ? <PluginEyeIcon size={16} /> : <PluginEyeOffIcon size={16} />}
                 </button>
               </div>
               {modalKeyError ? (
