@@ -1005,7 +1005,7 @@ export default function PluginUI() {
           <DialogHeader>
             <DialogTitle>{t(currentLang, "modalTitle")}</DialogTitle>
           </DialogHeader>
-          <div className="text-[13px] text-muted-foreground leading-5 mb-3">
+          <div className="text-[13px] text-muted-foreground leading-5">
             <div id="currentKeyContainer" className="mb-2">
               {t(currentLang, "currentKey")}{" "}
               <span style={{ color: "#222", fontFamily: "monospace" }}>
@@ -1058,12 +1058,14 @@ export default function PluginUI() {
               </div>
               <div
                 className={cn(
-                  "mt-2 h-[18px] text-[13px] leading-[18px]",
-                  modalKeyError ? "text-[#ff4d4f]" : "text-transparent"
+                  "text-[13px] leading-[18px]",
+                  modalKeyError
+                    ? "mt-2 h-[18px] text-[#ff4d4f]"
+                    : "mt-0 h-0 overflow-hidden text-transparent"
                 )}
                 aria-live="polite"
               >
-                {modalKeyError || "."}
+                {modalKeyError || ""}
               </div>
             </div>
           </div>
