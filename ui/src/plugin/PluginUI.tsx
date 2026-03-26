@@ -1054,7 +1054,7 @@ export default function PluginUI() {
                         : "Hide key"
                   }
                 >
-                  {isPassword ? <PluginEyeIcon size={16} /> : <PluginEyeOffIcon size={16} />}
+                  {isPassword ? <PluginEyeOffIcon size={16} /> : <PluginEyeIcon size={16} />}
                 </button>
               </div>
               {modalKeyError ? (
