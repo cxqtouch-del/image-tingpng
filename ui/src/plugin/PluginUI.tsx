@@ -822,7 +822,7 @@ export default function PluginUI() {
           {renderedNodes.length === 0 ? (
             <div
               id="noSelectionMessage"
-              className="w-full shrink-0 text-center text-[13px] text-muted-foreground py-2"
+              className="w-full shrink-0 text-center text-[13px] text-muted-foreground pt-5 pb-2"
             >
               {t(currentLang, "noSelection")}
             </div>
