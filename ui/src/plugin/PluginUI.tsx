@@ -887,7 +887,7 @@ export default function PluginUI() {
           </Tabs>
         </div>
 
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-2">
           <div className="flex items-center justify-between">
             <label className="flex items-center gap-2 text-[13px] text-[#222]">
               <Checkbox checked={isZipDownload} onCheckedChange={(v) => setIsZipDownload(v === true)} />
