@@ -829,7 +829,7 @@ export default function PluginUI() {
                     checked={checked}
                     onCheckedChange={(v) => onToggleLayer(node.id, v === true)}
                   />
-                  <div className="w-12 h-12 rounded-[4px] bg-[#e0e0e0] overflow-hidden">
+                  <div className="w-12 h-12 rounded-[6px] bg-[#e0e0e0] overflow-hidden">
                     {thumbUrl ? (
                       <img src={thumbUrl} alt={node.name} className="w-full h-full object-contain" />
                     ) : null}
