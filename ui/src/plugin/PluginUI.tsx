@@ -1,4 +1,5 @@
 import * as React from "react"
+import { flushSync } from "react-dom"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
@@ -183,8 +184,8 @@ export default function PluginUI() {
   const [isSavingKey, setIsSavingKey] = React.useState(false)
   const [isPassword, setIsPassword] = React.useState(true)
 
-  const apiKeyModalTitleRef = React.useRef<HTMLHeadingElement>(null)
-  const modalKeyInputRef = React.useRef<HTMLInputElement>(null)
+  /** Radix FocusScope 只把 tabIndex>=0 当作可自动聚焦目标；首帧设为 -1 可避免打开时被 focusFirst 选中 */
+  const [modalKeyInputTabIndex, setModalKeyInputTabIndex] = React.useState<0 | -1>(-1)
 
   // Bottom message/toast
   const [toastHtml, setToastHtml] = React.useState<string>("")
@@ -687,27 +688,32 @@ export default function PluginUI() {
     setModalKeyValue(storedApiKey || "")
     setModalKeyError("")
     setIsPassword(true)
+    setModalKeyInputTabIndex(-1)
     setApiKeyModalOpen(true)
   }, [storedApiKey])
 
-  /** 弹窗打开后避免焦点落在输入框（Radix 焦点陷阱会拉回第一个 tabbable）；将焦点放在标题上 */
   React.useEffect(() => {
-    if (!apiKeyModalOpen) return
-    const moveFocusOffInput = () => {
-      const input = modalKeyInputRef.current
-      if (input && document.activeElement === input) {
-        input.blur()
-      }
-      apiKeyModalTitleRef.current?.focus({ preventScroll: true })
+    if (!apiKeyModalOpen) {
+      setModalKeyInputTabIndex(-1)
+      return
     }
-    queueMicrotask(moveFocusOffInput)
-    const t0 = window.setTimeout(moveFocusOffInput, 0)
-    const t1 = window.setTimeout(moveFocusOffInput, 50)
-    return () => {
-      clearTimeout(t0)
-      clearTimeout(t1)
-    }
+    setModalKeyInputTabIndex(-1)
+    const t = window.setTimeout(() => setModalKeyInputTabIndex(0), 0)
+    return () => clearTimeout(t)
   }, [apiKeyModalOpen])
+
+  /** tabIndex=-1 时仍可能被扩展/浏览器对 password 字段异步 focus，在捕获阶段摘掉 */
+  React.useEffect(() => {
+    if (!apiKeyModalOpen || modalKeyInputTabIndex !== -1) return
+    const onFocusIn = (e: FocusEvent) => {
+      const t = e.target
+      if (t instanceof HTMLInputElement && t.id === "modalKeyInput") {
+        t.blur()
+      }
+    }
+    document.addEventListener("focusin", onFocusIn, true)
+    return () => document.removeEventListener("focusin", onFocusIn, true)
+  }, [apiKeyModalOpen, modalKeyInputTabIndex])
 
   const handleSaveKey = React.useCallback(async () => {
     if (isSavingKey) return
@@ -995,23 +1001,9 @@ export default function PluginUI() {
 
       {/* API Key Modal */}
       <Dialog open={apiKeyModalOpen} onOpenChange={setApiKeyModalOpen}>
-        <DialogContent
-          className="w-[260px] p-4 rounded-2xl"
-          onOpenAutoFocus={(e) => {
-            e.preventDefault()
-            queueMicrotask(() => {
-              apiKeyModalTitleRef.current?.focus({ preventScroll: true })
-            })
-          }}
-        >
+        <DialogContent className="w-[260px] p-4 rounded-2xl">
           <DialogHeader>
-            <DialogTitle
-              ref={apiKeyModalTitleRef}
-              tabIndex={-1}
-              className="outline-none focus:outline-none focus:ring-0"
-            >
-              {t(currentLang, "modalTitle")}
-            </DialogTitle>
+            <DialogTitle>{t(currentLang, "modalTitle")}</DialogTitle>
           </DialogHeader>
           <div className="text-[13px] text-muted-foreground leading-5 mb-3">
             <div id="currentKeyContainer" className="mb-2">
@@ -1026,11 +1018,17 @@ export default function PluginUI() {
             <div className="mt-3">
               <div className="relative">
                 <Input
-                  ref={modalKeyInputRef}
                   id="modalKeyInput"
                   type={isPassword ? "password" : "text"}
+                  tabIndex={modalKeyInputTabIndex}
                   autoComplete="off"
                   value={modalKeyValue}
+                  onPointerDownCapture={(e) => {
+                    if (modalKeyInputTabIndex !== -1) return
+                    e.preventDefault()
+                    flushSync(() => setModalKeyInputTabIndex(0))
+                    e.currentTarget.focus()
+                  }}
                   onChange={(e) => {
                     setModalKeyValue(e.target.value)
                     setModalKeyError("")
