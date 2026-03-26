@@ -775,7 +775,7 @@ export default function PluginUI() {
       className="w-[300px] bg-background text-foreground"
     >
       <div className="p-4 flex flex-col gap-5">
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-2">
           <div className="flex items-center justify-between">
             <div className="text-[13px] font-medium text-[#222]">
               <span>{t(currentLang, "exportContent")}</span> ({selectedLayerCount})
@@ -818,7 +818,7 @@ export default function PluginUI() {
             </div>
           </div>
 
-          <div className="max-h-[400px] overflow-y-auto flex flex-col gap-3">
+          <div className="max-h-[400px] overflow-y-auto flex flex-col gap-2">
           {renderedNodes.length === 0 ? (
             <div id="noSelectionMessage" className="text-[13px] text-[#888] text-center py-2">
               {t(currentLang, "noSelection")}
