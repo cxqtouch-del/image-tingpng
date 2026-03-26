@@ -873,96 +873,98 @@ export default function PluginUI() {
           </div>
         </div>
 
-        <div className="flex flex-col gap-2">
-          <div className="text-[13px] font-medium text-[#222]">{t(currentLang, "exportFormat")}</div>
-          <Tabs
-            value={selectedFormat}
-            onValueChange={(v) => {
-              setSelectedFormat(v as any)
-              requestResizeAfterDom()
-            }}
-          >
-            <TabsList>
-              <TabsTrigger value="PNG" className="flex-1 px-0">
-                PNG
-              </TabsTrigger>
-              <TabsTrigger value="JPG" className="flex-1 px-0">
-                JPG
-              </TabsTrigger>
-              <TabsTrigger value="SVG" className="flex-1 px-0">
-                SVG
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
-        </div>
-
-        <div className="flex flex-col gap-2">
-          <div className="flex items-center justify-between">
-            <label className="flex items-center gap-2 text-[13px] text-[#222]">
-              <Checkbox checked={isZipDownload} onCheckedChange={(v) => setIsZipDownload(v === true)} />
-              <span>{t(currentLang, "packageDownload")}</span>
-            </label>
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-2">
+            <div className="text-[13px] font-medium text-[#222]">{t(currentLang, "exportFormat")}</div>
+            <Tabs
+              value={selectedFormat}
+              onValueChange={(v) => {
+                setSelectedFormat(v as any)
+                requestResizeAfterDom()
+              }}
+            >
+              <TabsList>
+                <TabsTrigger value="PNG" className="flex-1 px-0">
+                  PNG
+                </TabsTrigger>
+                <TabsTrigger value="JPG" className="flex-1 px-0">
+                  JPG
+                </TabsTrigger>
+                <TabsTrigger value="SVG" className="flex-1 px-0">
+                  SVG
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
           </div>
 
-          {canUseCloudCompress ? (
-            <label className="flex items-center gap-2 text-[13px] text-[#222]">
-              <Checkbox
-                checked={isCloudCompress}
-                onCheckedChange={(v) => {
-                  if (v === true) {
-                    if (!storedApiKey) {
-                      if (!hasShownInfoModal) {
-                        setPendingAction("toggleCheckbox")
-                        setInfoModalOpen(true)
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center justify-between">
+              <label className="flex items-center gap-2 text-[13px] text-[#222]">
+                <Checkbox checked={isZipDownload} onCheckedChange={(v) => setIsZipDownload(v === true)} />
+                <span>{t(currentLang, "packageDownload")}</span>
+              </label>
+            </div>
+
+            {canUseCloudCompress ? (
+              <label className="flex items-center gap-2 text-[13px] text-[#222]">
+                <Checkbox
+                  checked={isCloudCompress}
+                  onCheckedChange={(v) => {
+                    if (v === true) {
+                      if (!storedApiKey) {
+                        if (!hasShownInfoModal) {
+                          setPendingAction("toggleCheckbox")
+                          setInfoModalOpen(true)
+                          return
+                        }
+                        openManageKeyModal()
                         return
                       }
-                      openManageKeyModal()
+                      setIsCloudCompress(true)
                       return
                     }
-                    setIsCloudCompress(true)
-                    return
-                  }
-                  setIsCloudCompress(false)
-                }}
-              />
-              <span>TinyPNG</span>
-              <button
-                type="button"
-                className="inline-flex items-center justify-center p-0.5"
-                onClick={() => setInfoModalOpen(true)}
-                aria-label={currentLang === "zh" ? "说明" : "Info"}
-              >
-                <PluginInfoIcon size={16} />
-              </button>
-              <button
-                type="button"
-                className="ml-2 text-[#2E3BF8]"
-                onClick={() => {
-                  if (!hasShownInfoModal) {
-                    setPendingAction("openManageKey")
-                    setInfoModalOpen(true)
-                    return
-                  }
-                  openManageKeyModal()
-                }}
-              >
-                {t(currentLang, "manageKey")}
-              </button>
-            </label>
-          ) : null}
-        </div>
+                    setIsCloudCompress(false)
+                  }}
+                />
+                <span>TinyPNG</span>
+                <button
+                  type="button"
+                  className="inline-flex items-center justify-center p-0.5"
+                  onClick={() => setInfoModalOpen(true)}
+                  aria-label={currentLang === "zh" ? "说明" : "Info"}
+                >
+                  <PluginInfoIcon size={16} />
+                </button>
+                <button
+                  type="button"
+                  className="ml-2 text-[#2E3BF8]"
+                  onClick={() => {
+                    if (!hasShownInfoModal) {
+                      setPendingAction("openManageKey")
+                      setInfoModalOpen(true)
+                      return
+                    }
+                    openManageKeyModal()
+                  }}
+                >
+                  {t(currentLang, "manageKey")}
+                </button>
+              </label>
+            ) : null}
+          </div>
 
-        <Button
-          id="exportButton"
-          onClick={handleExportClick}
-          disabled={exportDisabled || exportInProgress}
-          // Keep shadcn button theme styles; only control size/layout here
-          className="w-full h-[44px] rounded-md text-[14px] font-medium"
-        >
-          {selectedLayerCount === 0
-            ? t(currentLang, "exportBtn")
-            : t(currentLang, "exportBtnCount", { n: selectedLayerCount })}
-        </Button>
+          <Button
+            id="exportButton"
+            onClick={handleExportClick}
+            disabled={exportDisabled || exportInProgress}
+            // Keep shadcn button theme styles; only control size/layout here
+            className="w-full h-[44px] rounded-md text-[14px] font-medium"
+          >
+            {selectedLayerCount === 0
+              ? t(currentLang, "exportBtn")
+              : t(currentLang, "exportBtnCount", { n: selectedLayerCount })}
+          </Button>
+        </div>
 
         <p
           id="message"
