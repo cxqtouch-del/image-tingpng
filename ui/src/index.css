@@ -21,7 +21,8 @@
 
     /* #F5F5F5 */
     --muted: 0 0% 96.08%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    /* #666666 */
+    --muted-foreground: 0 0% 40%;
 
     --accent: 210 40% 96.1%;
     --accent-foreground: 222.2 47.4% 11.2%;

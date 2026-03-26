@@ -788,7 +788,7 @@ export default function PluginUI() {
                   disabled={selectAllDisabled}
                   className={cn(
                     "text-[13px] font-normal text-[#2E3BF8] select-none",
-                    selectAllDisabled && "text-[#888] cursor-default pointer-events-none"
+                    selectAllDisabled && "text-muted-foreground cursor-default pointer-events-none"
                   )}
                 >
                   {t(currentLang, "selectAll")}
@@ -822,7 +822,7 @@ export default function PluginUI() {
           {renderedNodes.length === 0 ? (
             <div
               id="noSelectionMessage"
-              className="w-full shrink-0 text-center text-[13px] text-[#888] py-2"
+              className="w-full shrink-0 text-center text-[13px] text-muted-foreground py-2"
             >
               {t(currentLang, "noSelection")}
             </div>
@@ -843,7 +843,7 @@ export default function PluginUI() {
                   </div>
                   <div className="flex flex-col gap-2 flex-1 overflow-hidden">
                     <div className="text-[13px] font-normal text-[#222] truncate">{node.name}</div>
-                    <div className="text-[12px] text-[#888]">{node.width} × {node.height}</div>
+                    <div className="text-[12px] text-muted-foreground">{node.width} × {node.height}</div>
                   </div>
                 </div>
               )
@@ -927,7 +927,7 @@ export default function PluginUI() {
               <span>TinyPNG</span>
               <button
                 type="button"
-                className="inline-flex items-center justify-center text-[#888] p-0.5"
+                className="inline-flex items-center justify-center text-muted-foreground p-0.5"
                 onClick={() => setInfoModalOpen(true)}
                 aria-label={currentLang === "zh" ? "说明" : "Info"}
               >
@@ -989,7 +989,7 @@ export default function PluginUI() {
           <DialogHeader>
             <DialogTitle>{t(currentLang, "modalTitle")}</DialogTitle>
           </DialogHeader>
-          <div className="text-[12px] text-[#888] leading-5 mb-3">
+          <div className="text-[12px] text-muted-foreground leading-5 mb-3">
             <div id="currentKeyContainer" className="mb-2">
               {t(currentLang, "currentKey")}{" "}
               <span style={{ color: "#222", fontFamily: "monospace" }}>
@@ -1018,7 +1018,7 @@ export default function PluginUI() {
                 />
                 <button
                   type="button"
-                  className="absolute right-2 top-1/2 -translate-y-1/2 inline-flex items-center justify-center text-[#888] p-0.5"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 inline-flex items-center justify-center text-muted-foreground p-0.5"
                   onClick={() => setIsPassword((p) => !p)}
                   aria-label={
                     isPassword
@@ -1067,7 +1067,7 @@ export default function PluginUI() {
           <DialogHeader>
             <DialogTitle>{t(currentLang, "cannotExport")}</DialogTitle>
           </DialogHeader>
-          <div className="text-[12px] text-[#888] leading-6 mb-3">
+          <div className="text-[12px] text-muted-foreground leading-6 mb-3">
             {t(currentLang, "keyLimitReached")}
           </div>
           <DialogFooter>
@@ -1111,7 +1111,7 @@ export default function PluginUI() {
           <DialogHeader>
             <DialogTitle>{t(currentLang, "howToGetKey")}</DialogTitle>
           </DialogHeader>
-          <div className="text-[12px] text-[#888] leading-6 mb-3">
+          <div className="text-[12px] text-muted-foreground leading-6 mb-3">
             <p dangerouslySetInnerHTML={{ __html: t(currentLang, "infoStep1") as string }} />
             <p>{t(currentLang, "infoStep2")}</p>
             <p>{t(currentLang, "infoStep3")}</p>
