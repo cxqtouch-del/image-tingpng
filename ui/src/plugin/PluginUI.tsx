@@ -728,20 +728,6 @@ export default function PluginUI() {
     showToast,
   ])
 
-  const sortedRenderedNodes = React.useMemo(() => {
-    const orderIndex = new Map(selectedNodeIdsOrder.map((id, idx) => [id, idx]))
-    const originalIndex = new Map(renderedNodes.map((n, idx) => [n.id, idx]))
-    const INF = 1e9
-    return renderedNodes
-      .slice()
-      .sort((a, b) => {
-        const ai = orderIndex.has(a.id) ? (orderIndex.get(a.id) as number) : INF
-        const bi = orderIndex.has(b.id) ? (orderIndex.get(b.id) as number) : INF
-        if (ai !== bi) return ai - bi
-        return (originalIndex.get(a.id) ?? INF) - (originalIndex.get(b.id) ?? INF)
-      })
-  }, [renderedNodes, selectedNodeIdsOrder])
-
   const onToggleLayer = React.useCallback(
     (id: string, checked: boolean) => {
       if (checked) {
@@ -825,7 +811,7 @@ export default function PluginUI() {
               {t(currentLang, "noSelection")}
             </div>
           ) : (
-            sortedRenderedNodes.map((node) => {
+            renderedNodes.map((node) => {
               const checked = selectedNodeIds.has(node.id)
               const thumbUrl = thumbUrls[node.id]
               return (
