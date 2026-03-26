@@ -125,6 +125,7 @@ figma.ui.onmessage = (msg) => __awaiter(void 0, void 0, void 0, function* () {
                         continue;
                     }
                     const imageBytes = yield node.exportAsync(options);
+                    // 直接传 Uint8Array，避免 Array.from 超大图时序列化卡死；UI 端已兼容两种格式
                     figma.ui.postMessage({
                         type: 'export-complete-data',
                         filename: `${node.name}@${scale}x.${format.toLowerCase()}`,
