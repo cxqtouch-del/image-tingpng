@@ -11,6 +11,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { SpriteIcon } from "@/components/icons/SpriteIcon"
 import { cn } from "@/lib/utils"
 
 import type { ZipFile } from "./export/zip"
@@ -921,10 +922,11 @@ export default function PluginUI() {
               <span>TinyPNG</span>
               <button
                 type="button"
-                className="text-[#888]"
+                className="inline-flex items-center justify-center text-[#888] p-0.5"
                 onClick={() => setInfoModalOpen(true)}
+                aria-label={currentLang === "zh" ? "说明" : "Info"}
               >
-                i
+                <SpriteIcon id="plugin-info-icon" size={16} />
               </button>
               <button
                 type="button"
@@ -1011,10 +1013,22 @@ export default function PluginUI() {
                 />
                 <button
                   type="button"
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-[#888]"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 inline-flex items-center justify-center text-[#888] p-0.5"
                   onClick={() => setIsPassword((p) => !p)}
+                  aria-label={
+                    isPassword
+                      ? currentLang === "zh"
+                        ? "显示密钥"
+                        : "Show key"
+                      : currentLang === "zh"
+                        ? "隐藏密钥"
+                        : "Hide key"
+                  }
                 >
-                  {isPassword ? "👁" : "🙈"}
+                  <SpriteIcon
+                    id={isPassword ? "plugin-eye-icon" : "plugin-eye-off-icon"}
+                    size={16}
+                  />
                 </button>
               </div>
               {modalKeyError ? (
