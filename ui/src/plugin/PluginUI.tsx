@@ -847,9 +847,9 @@ export default function PluginUI() {
         <div className="flex flex-col gap-2">
           <div className="text-[13px] font-medium text-[#222]">{t(currentLang, "exportSize")}</div>
           <div className="flex flex-col gap-1">
-            <div id="scaleOptions" className="flex gap-3">
+            <div id="scaleOptions" className="flex gap-[12px]">
               {[1, 2, 3, 4].map((s) => (
-                <label key={s} className="flex items-center gap-2 text-[13px] text-[#222]">
+                <label key={s} className="flex items-center gap-[4px] text-[13px] text-[#222]">
                   <Checkbox
                     checked={selectedScales.includes(s)}
                     onCheckedChange={(v) => toggleScale(s, v === true)}
