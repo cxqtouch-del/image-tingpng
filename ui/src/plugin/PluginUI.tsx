@@ -1123,8 +1123,9 @@ export default function PluginUI() {
             }
 
             if (pendingAction === "toggleCheckbox") {
-              if (storedApiKey) setIsCloudCompress(true)
-              else openManageKeyModal()
+              // 用户是从“TinyPNG 勾选”入口进来的，只应关闭说明弹窗，不要继续打开“管理 Key”弹窗。
+              // 这样可以保证“管理 Key”只有在点击对应按钮区域时才会唤起。
+              setIsCloudCompress(false)
             } else if (pendingAction === "openManageKey") {
               openManageKeyModal()
             }
