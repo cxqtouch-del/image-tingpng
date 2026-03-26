@@ -1067,7 +1067,7 @@ export default function PluginUI() {
               </div>
             </div>
           </div>
-          <DialogFooter className="gap-3">
+          <DialogFooter className="flex-row gap-3">
             <Button
               variant="outline"
               onClick={() => setApiKeyModalOpen(false)}
