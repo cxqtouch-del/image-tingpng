@@ -1,0 +1,31 @@
+import { cn } from "@/lib/utils"
+
+type Props = {
+  className?: string
+  size?: number
+  title?: string
+}
+
+/** 与仓库根目录 `images/info.svg` 一致；内联以避免 Figma 内 `<use href="icons.svg#">` 无法加载。 */
+export function PluginInfoIcon({ className, size = 16, title }: Props) {
+  return (
+    <svg
+      className={cn("inline-block shrink-0 text-muted-foreground", className)}
+      width={size}
+      height={size}
+      viewBox="0 0 48 48"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden={title ? undefined : true}
+      role={title ? "img" : undefined}
+      focusable="false"
+    >
+      {title ? <title>{title}</title> : null}
+      <path
+        d="M24 41.9999C33.941 41.9999 42 33.9409 42 23.9999C42 14.0589 33.941 5.99988 24 5.99988C14.059 5.99988 6 14.0589 6 23.9999C6 33.9409 14.059 41.9999 24 41.9999ZM24 45.9999C11.85 45.9999 2 36.1499 2 23.9999C2 11.8499 11.85 1.99988 24 1.99988C36.15 1.99988 46 11.8499 46 23.9999C46 36.1499 36.15 45.9999 24 45.9999ZM22 30.9999V22.9999C20.8954 22.9999 20 22.1044 20 20.9999C20 19.8953 20.8954 18.9999 22 18.9999H24.0072C25.109 18.9999 26.0034 19.8909 26.005 20.9927C26.0101 24.3284 26 27.6642 26 30.9999H27C28.1046 30.9999 29 31.8953 29 32.9999C29 34.1044 28.1046 34.9999 27 34.9999H21C19.8954 34.9999 19 34.1044 19 32.9999C19 31.8953 19.8954 30.9999 21 30.9999H22ZM24 16.9999C22.8954 16.9999 22 16.1044 22 14.9999C22 13.8953 22.8954 12.9999 24 12.9999C25.1046 12.9999 26 13.8953 26 14.9999C26 16.1044 25.1046 16.9999 24 16.9999Z"
+        fill="currentColor"
+        fillOpacity={0.8}
+      />
+    </svg>
+  )
+}
