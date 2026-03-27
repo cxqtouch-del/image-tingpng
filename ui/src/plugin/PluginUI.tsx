@@ -165,6 +165,28 @@ function t(currentLang: "zh" | "en", key: keyof typeof T["zh"], params?: Record<
   return s
 }
 
+function sanitizeExportFilenamePart(name: string) {
+  const trimmed = (name || "").trim()
+  const safe = trimmed.replace(/[\\/:*?"<>|]/g, "_")
+  return safe || "Untitled"
+}
+
+function buildUniqueExportFilename(name: string, usedNames: Map<string, number>) {
+  const dotIndex = name.lastIndexOf(".")
+  const baseName = dotIndex > 0 ? name.slice(0, dotIndex) : name
+  const extension = dotIndex > 0 ? name.slice(dotIndex) : ""
+  const currentCount = usedNames.get(name) ?? 0
+
+  if (currentCount === 0) {
+    usedNames.set(name, 1)
+    return name
+  }
+
+  const nextName = `${baseName} (${currentCount + 1})${extension}`
+  usedNames.set(name, currentCount + 1)
+  return nextName
+}
+
 export default function PluginUI() {
   const containerRef = React.useRef<HTMLDivElement | null>(null)
   const [currentLang, setCurrentLang] = React.useState<"zh" | "en">("zh")
@@ -358,6 +380,8 @@ export default function PluginUI() {
   const exportSessionRef = React.useRef<{
     exportedFiles: ZipFile[]
     downloadQueue: Array<{ filename: string; bytes: Uint8Array }>
+    usedOutputNames: Map<string, number>
+    nodeNamesById: Record<string, string>
     chunkFiles: Record<
       string,
       {
@@ -396,6 +420,26 @@ export default function PluginUI() {
     return merged
   }, [])
 
+  const resolveFilenameFromFileId = React.useCallback(
+    (session: NonNullable<typeof exportSessionRef.current>, fileId: string, fallbackFilename: string) => {
+      const lastColonIndex = fileId.lastIndexOf(":")
+      if (lastColonIndex === -1) return fallbackFilename
+
+      const beforeFormat = fileId.slice(0, lastColonIndex)
+      const format = fileId.slice(lastColonIndex + 1).toLowerCase()
+      const secondLastColonIndex = beforeFormat.lastIndexOf(":")
+      if (secondLastColonIndex === -1) return fallbackFilename
+
+      const nodeId = beforeFormat.slice(0, secondLastColonIndex)
+      const scale = beforeFormat.slice(secondLastColonIndex + 1)
+      const nodeName = session.nodeNamesById[nodeId]
+      if (!nodeName) return fallbackFilename
+
+      return `${sanitizeExportFilenamePart(nodeName)}@${scale}x.${format}`
+    },
+    []
+  )
+
   const processNextDownload = React.useCallback(function processNextDownload(
     session: NonNullable<typeof exportSessionRef.current>
   ) {
@@ -431,11 +475,12 @@ export default function PluginUI() {
     if (!session || session.cancelled) return
     const u8 =
       bytes instanceof Uint8Array ? new Uint8Array(bytes as any) : new Uint8Array(bytes as number[])
+    const finalFilename = buildUniqueExportFilename(filename, session.usedOutputNames)
 
     if (session.selectedFormat === "PNG" || session.selectedFormat === "JPG") {
       if (session.isCloudCompress && session.apiKey) {
         session.pendingRecompress++
-        session.compressQueue.push({ filename, bytes: u8, apiKey: session.apiKey })
+        session.compressQueue.push({ filename: finalFilename, bytes: u8, apiKey: session.apiKey })
         const MAX_CONCURRENT_COMPRESS_TASKS = 3
         const scheduleCompressQueue = () => {
           while (session.activeCompressors < MAX_CONCURRENT_COMPRESS_TASKS && session.compressQueue.length > 0) {
@@ -467,9 +512,9 @@ export default function PluginUI() {
               }
 
               if (session.isZipDownload) {
-                session.exportedFiles.push({ filename, bytes: newBytes })
+                session.exportedFiles.push({ filename: finalFilename, bytes: newBytes })
               } else {
-                session.downloadQueue.push({ filename, bytes: newBytes })
+                session.downloadQueue.push({ filename: finalFilename, bytes: newBytes })
                 if (!session.downloading) processNextDownload(session)
               }
 
@@ -487,17 +532,17 @@ export default function PluginUI() {
         scheduleCompressQueue()
       } else {
         // export without compression
-        if (session.isZipDownload) session.exportedFiles.push({ filename, bytes: u8 })
+        if (session.isZipDownload) session.exportedFiles.push({ filename: finalFilename, bytes: u8 })
         else {
-          session.downloadQueue.push({ filename, bytes: u8 })
+          session.downloadQueue.push({ filename: finalFilename, bytes: u8 })
           if (!session.downloading) processNextDownload(session)
         }
       }
     } else {
       // SVG export: only export and download
-      if (session.isZipDownload) session.exportedFiles.push({ filename, bytes: u8 })
+      if (session.isZipDownload) session.exportedFiles.push({ filename: finalFilename, bytes: u8 })
       else {
-        session.downloadQueue.push({ filename, bytes: u8 })
+        session.downloadQueue.push({ filename: finalFilename, bytes: u8 })
         if (!session.downloading) processNextDownload(session)
       }
     }
@@ -526,10 +571,11 @@ export default function PluginUI() {
 
       if (file.receivedChunks === file.totalChunks) {
         delete session.chunkFiles[fileId]
-        handleExportCompleteData(file.filename, concatUint8Arrays(file.chunks))
+        const resolvedFilename = resolveFilenameFromFileId(session, fileId, file.filename)
+        handleExportCompleteData(resolvedFilename, concatUint8Arrays(file.chunks))
       }
     },
-    [concatUint8Arrays, handleExportCompleteData]
+    [concatUint8Arrays, handleExportCompleteData, resolveFilenameFromFileId]
   )
 
   const downloadZip = React.useCallback(
@@ -718,6 +764,8 @@ export default function PluginUI() {
     const session = {
       exportedFiles: [] as ZipFile[],
       downloadQueue: [] as Array<{ filename: string; bytes: Uint8Array }>,
+      usedOutputNames: new Map<string, number>(),
+      nodeNamesById: Object.fromEntries(candidateNodes.map((node) => [node.id, node.name])),
       chunkFiles: {},
       downloading: false,
       allComplete: false,
