@@ -21,6 +21,23 @@ function postExportFileInChunks(fileId: string, filename: string, bytes: Uint8Ar
   }
 }
 
+function sanitizeFilenamePart(name: string) {
+  const trimmed = (name || "").trim();
+  const safe = trimmed.replace(/[\\/:*?"<>|]/g, "_");
+  return safe || "Untitled";
+}
+
+function buildUniqueFilename(baseName: string, ext: string, used: Map<string, number>) {
+  const raw = `${baseName}${ext}`;
+  const count = used.get(raw) ?? 0;
+  if (count === 0) {
+    used.set(raw, 1);
+    return raw;
+  }
+  used.set(raw, count + 1);
+  return `${baseName} (${count + 1})${ext}`;
+}
+
 // Function to send selected nodes to the UI
 async function postSelectedNodesToUI() {
   const MAX_NODES_FOR_UI = 5;
@@ -124,6 +141,7 @@ figma.ui.onmessage = async (msg) => {
     }
 
     let exportCount = 0;
+    const usedFilenames = new Map<string, number>();
 
     for (const node of nodesToExport) {
       for (const scale of scales) {
@@ -156,7 +174,9 @@ figma.ui.onmessage = async (msg) => {
           }
 
           const imageBytes = await node.exportAsync(options);
-          const filename = `${node.name}@${scale}x.${format.toLowerCase()}`;
+          const baseName = `${sanitizeFilenamePart(node.name)}@${scale}x`;
+          const ext = `.${format.toLowerCase()}`;
+          const filename = buildUniqueFilename(baseName, ext, usedFilenames);
           const fileId = `${node.id}:${scale}:${format}`;
           postExportFileInChunks(fileId, filename, imageBytes);
           exportCount++;

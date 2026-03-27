@@ -740,7 +740,7 @@ export default function PluginUI() {
     showToast(toastMsg as string, 0)
 
     // Trigger export in main thread; UI will handle download/compress after export-complete-data arrives.
-    const ids = selectedNodeIdsOrder
+    const ids = Array.from(new Set(selectedNodeIdsOrder)).filter((id) => selectedNodeIds.has(id))
     window.parent.postMessage(
       {
         pluginMessage: {
