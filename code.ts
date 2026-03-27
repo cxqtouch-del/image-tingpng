@@ -124,7 +124,7 @@ figma.ui.onmessage = async (msg) => {
     await figma.clientStorage.setAsync('has-shown-info-modal', true);
   } else if (msg.type === 'export-image') {
     console.log('Received nodeIds from UI:', msg.settings.nodeIds);
-    const { nodeIds, scales, format, compress } = msg.settings;
+    const { nodeIds, scales, format, compress, exportItems } = msg.settings;
 
     if (!nodeIds || nodeIds.length === 0) {
       figma.ui.postMessage({ type: 'error', message: '没有选择任何图层进行导出。' });
@@ -135,19 +135,18 @@ figma.ui.onmessage = async (msg) => {
       return;
     }
 
-    const resolvedNodes = await Promise.all(
-      (nodeIds as string[]).map(async (id: string) => {
-        try {
-          return await figma.getNodeByIdAsync(id);
-        } catch {
-          return null;
-        }
-      })
-    );
+    const plannedExportItems = Array.isArray(exportItems) && exportItems.length > 0
+      ? exportItems
+      : (nodeIds as string[]).flatMap((id: string) =>
+          (scales as number[]).map((scale: number, index: number) => ({
+            exportKey: `${id}:${scale}:${format}:${index}`,
+            nodeId: id,
+            scale,
+            format,
+          }))
+        );
 
-    const nodesToExport = resolvedNodes.filter(Boolean) as SceneNode[];
-
-    if (nodesToExport.length === 0) {
+    if (plannedExportItems.length === 0) {
       figma.ui.postMessage({ type: 'error', message: '选中的图层在Figma中不存在或已取消选择。' });
       return;
     }
@@ -155,47 +154,52 @@ figma.ui.onmessage = async (msg) => {
     let exportCount = 0;
     const usedFilenames = new Map<string, number>();
 
-    for (const node of nodesToExport) {
-      for (const scale of scales) {
-        try {
-          let options: ExportSettings;
-
-          const constraintValue: {
-            type: 'SCALE';
-            value: number;
-          } = { type: 'SCALE', value: scale };
-
-          if (format === 'JPG') {
-            options = {
-              format: 'JPG',
-              ...(compress ? { quality: 0.5 } : {}), // stronger compression when enabled
-              constraint: constraintValue,
-            };
-          } else if (format === 'PNG') {
-            options = {
-              format: 'PNG',
-              constraint: constraintValue,
-            };
-          } else if (format === 'SVG') {
-            options = {
-              format: 'SVG',
-            };
-          } else {
-            figma.ui.postMessage({ type: 'error', message: `不支持的导出格式: ${format}` });
-            continue;
-          }
-
-          const imageBytes = await node.exportAsync(options);
-          const baseName = `${sanitizeFilenamePart(node.name)}@${scale}x`;
-          const ext = `.${format.toLowerCase()}`;
-          const filename = buildUniqueFilename(baseName, ext, usedFilenames);
-          const fileId = `${node.id}:${scale}:${format}`;
-          postExportFileInChunks(fileId, filename, node.id, node.name, scale, format, imageBytes);
-          exportCount++;
-
-        } catch (error: any) {
-          figma.ui.postMessage({ type: 'error', message: `导出 ${node.name} (${scale}x) 失败: ${(error as Error).message}` });
+    for (const item of plannedExportItems) {
+      try {
+        const node = await figma.getNodeByIdAsync(item.nodeId) as SceneNode | null;
+        if (!node) {
+          figma.ui.postMessage({ type: 'error', message: '选中的图层在Figma中不存在或已取消选择。' });
+          continue;
         }
+
+        let options: ExportSettings;
+        const itemFormat = item.format || format;
+        const itemScale = item.scale;
+
+        const constraintValue: {
+          type: 'SCALE';
+          value: number;
+        } = { type: 'SCALE', value: itemScale };
+
+        if (itemFormat === 'JPG') {
+          options = {
+            format: 'JPG',
+            ...(compress ? { quality: 0.5 } : {}),
+            constraint: constraintValue,
+          };
+        } else if (itemFormat === 'PNG') {
+          options = {
+            format: 'PNG',
+            constraint: constraintValue,
+          };
+        } else if (itemFormat === 'SVG') {
+          options = {
+            format: 'SVG',
+          };
+        } else {
+          figma.ui.postMessage({ type: 'error', message: `不支持的导出格式: ${itemFormat}` });
+          continue;
+        }
+
+        const imageBytes = await node.exportAsync(options);
+        const fallbackBaseName = `${sanitizeFilenamePart(node.name)}@${itemScale}x`;
+        const fallbackExt = `.${String(itemFormat).toLowerCase()}`;
+        const filename = item.filename || buildUniqueFilename(fallbackBaseName, fallbackExt, usedFilenames);
+        const fileId = item.exportKey || `${node.id}:${itemScale}:${itemFormat}`;
+        postExportFileInChunks(fileId, filename, node.id, node.name, itemScale, itemFormat, imageBytes);
+        exportCount++;
+      } catch (error: any) {
+        figma.ui.postMessage({ type: 'error', message: `导出失败: ${(error as Error).message}` });
       }
     }
 

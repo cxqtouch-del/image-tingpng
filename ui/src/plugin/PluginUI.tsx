@@ -570,8 +570,7 @@ export default function PluginUI() {
 
       if (file.receivedChunks === file.totalChunks) {
         delete session.chunkFiles[fileId]
-        const resolvedFilename = `${sanitizeExportFilenamePart(file.nodeName)}@${file.scale}x.${String(file.format).toLowerCase()}`
-        handleExportCompleteData(resolvedFilename, concatUint8Arrays(file.chunks))
+        handleExportCompleteData(file.filename, concatUint8Arrays(file.chunks))
       }
     },
     [concatUint8Arrays, handleExportCompleteData]
@@ -791,6 +790,25 @@ export default function PluginUI() {
 
     // Trigger export in main thread; UI will handle download/compress after export-complete-data arrives.
     const ids = Array.from(new Set(selectedNodeIdsOrder)).filter((id) => selectedNodeIds.has(id))
+    const nodeNameById = Object.fromEntries(candidateNodes.map((node) => [node.id, node.name]))
+    const filenamePlanUsedNames = new Map<string, number>()
+    const exportItems = ids.flatMap((id, index) =>
+      selectedScales.map((scale) => {
+        const nodeName = nodeNameById[id] || "Untitled"
+        const plannedFilename = buildUniqueExportFilename(
+          `${sanitizeExportFilenamePart(nodeName)}@${scale}x.${selectedFormat.toLowerCase()}`,
+          filenamePlanUsedNames
+        )
+
+        return {
+          exportKey: `${id}:${scale}:${selectedFormat}:${index}`,
+          nodeId: id,
+          scale,
+          format: selectedFormat,
+          filename: plannedFilename,
+        }
+      })
+    )
     window.parent.postMessage(
       {
         pluginMessage: {
@@ -800,6 +818,7 @@ export default function PluginUI() {
             scales: selectedScales,
             format: selectedFormat,
             compress: false,
+            exportItems,
           },
         },
       },
