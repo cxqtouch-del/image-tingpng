@@ -3,7 +3,7 @@
   "id": "1618472237742805146",
   "api": "1.0.0",
   "main": "code.js",
-  "ui": "ui.html",
+  "ui": "ui-react.html",
   "editorType": ["figma"],
   "documentAccess": "dynamic-page",
   "networkAccess": {
