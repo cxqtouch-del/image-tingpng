@@ -499,9 +499,9 @@ export default function PluginUI() {
               }
 
               if (session.isZipDownload) {
-                session.exportedFiles.push({ filename: finalFilename, bytes: newBytes })
+                session.exportedFiles.push({ filename: task.filename, bytes: newBytes })
               } else {
-                session.downloadQueue.push({ filename: finalFilename, bytes: newBytes })
+                session.downloadQueue.push({ filename: task.filename, bytes: newBytes })
                 if (!session.downloading) processNextDownload(session)
               }
 
