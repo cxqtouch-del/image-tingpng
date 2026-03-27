@@ -38,6 +38,10 @@ type PluginMessage =
       type: "export-file-chunk"
       fileId: string
       filename: string
+      nodeId: string
+      nodeName: string
+      scale: number
+      format: string
       chunkIndex: number
       totalChunks: number
       bytes: number[]
@@ -386,6 +390,9 @@ export default function PluginUI() {
       string,
       {
         filename: string
+        nodeName: string
+        scale: number
+        format: string
         totalChunks: number
         chunks: Array<Uint8Array | undefined>
         receivedChunks: number
@@ -419,26 +426,6 @@ export default function PluginUI() {
     }
     return merged
   }, [])
-
-  const resolveFilenameFromFileId = React.useCallback(
-    (session: NonNullable<typeof exportSessionRef.current>, fileId: string, fallbackFilename: string) => {
-      const lastColonIndex = fileId.lastIndexOf(":")
-      if (lastColonIndex === -1) return fallbackFilename
-
-      const beforeFormat = fileId.slice(0, lastColonIndex)
-      const format = fileId.slice(lastColonIndex + 1).toLowerCase()
-      const secondLastColonIndex = beforeFormat.lastIndexOf(":")
-      if (secondLastColonIndex === -1) return fallbackFilename
-
-      const nodeId = beforeFormat.slice(0, secondLastColonIndex)
-      const scale = beforeFormat.slice(secondLastColonIndex + 1)
-      const nodeName = session.nodeNamesById[nodeId]
-      if (!nodeName) return fallbackFilename
-
-      return `${sanitizeExportFilenamePart(nodeName)}@${scale}x.${format}`
-    },
-    []
-  )
 
   const processNextDownload = React.useCallback(function processNextDownload(
     session: NonNullable<typeof exportSessionRef.current>
@@ -549,7 +536,16 @@ export default function PluginUI() {
   }, [currentLang, hideToast, processNextDownload, showMessage])
 
   const handleExportFileChunk = React.useCallback(
-    (fileId: string, filename: string, chunkIndex: number, totalChunks: number, bytes: number[]) => {
+    (
+      fileId: string,
+      filename: string,
+      nodeName: string,
+      scale: number,
+      format: string,
+      chunkIndex: number,
+      totalChunks: number,
+      bytes: number[]
+    ) => {
       const session = exportSessionRef.current
       if (!session || session.cancelled) return
 
@@ -557,6 +553,9 @@ export default function PluginUI() {
         session.chunkFiles[fileId] ??
         {
           filename,
+          nodeName,
+          scale,
+          format,
           totalChunks,
           chunks: new Array<Uint8Array | undefined>(totalChunks),
           receivedChunks: 0,
@@ -571,11 +570,11 @@ export default function PluginUI() {
 
       if (file.receivedChunks === file.totalChunks) {
         delete session.chunkFiles[fileId]
-        const resolvedFilename = resolveFilenameFromFileId(session, fileId, file.filename)
+        const resolvedFilename = `${sanitizeExportFilenamePart(file.nodeName)}@${file.scale}x.${String(file.format).toLowerCase()}`
         handleExportCompleteData(resolvedFilename, concatUint8Arrays(file.chunks))
       }
     },
-    [concatUint8Arrays, handleExportCompleteData, resolveFilenameFromFileId]
+    [concatUint8Arrays, handleExportCompleteData]
   )
 
   const downloadZip = React.useCallback(
@@ -724,6 +723,9 @@ export default function PluginUI() {
       handleExportFileChunk(
         pluginMessage.fileId,
         pluginMessage.filename,
+        pluginMessage.nodeName,
+        pluginMessage.scale,
+        pluginMessage.format,
         pluginMessage.chunkIndex,
         pluginMessage.totalChunks,
         pluginMessage.bytes

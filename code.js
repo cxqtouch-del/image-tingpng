@@ -10,7 +10,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 figma.showUI(__html__, { width: 300, height: 400 });
 const EXPORT_CHUNK_SIZE = 64 * 1024;
-function postExportFileInChunks(fileId, filename, bytes) {
+function postExportFileInChunks(fileId, filename, nodeId, nodeName, scale, format, bytes) {
     const totalChunks = Math.max(1, Math.ceil(bytes.length / EXPORT_CHUNK_SIZE));
     for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
         const start = chunkIndex * EXPORT_CHUNK_SIZE;
@@ -20,6 +20,10 @@ function postExportFileInChunks(fileId, filename, bytes) {
             type: 'export-file-chunk',
             fileId,
             filename,
+            nodeId,
+            nodeName,
+            scale,
+            format,
             chunkIndex,
             totalChunks,
             bytes: Array.from(chunkBytes),
@@ -167,7 +171,7 @@ figma.ui.onmessage = (msg) => __awaiter(void 0, void 0, void 0, function* () {
                     const ext = `.${format.toLowerCase()}`;
                     const filename = buildUniqueFilename(baseName, ext, usedFilenames);
                     const fileId = `${node.id}:${scale}:${format}`;
-                    postExportFileInChunks(fileId, filename, imageBytes);
+                    postExportFileInChunks(fileId, filename, node.id, node.name, scale, format, imageBytes);
                     exportCount++;
                 }
                 catch (error) {
